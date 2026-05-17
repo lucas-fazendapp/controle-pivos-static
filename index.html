@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Controle ERVA</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="toolbar" aria-label="Controles do acompanhamento">
+        <div>
+          <h1>Controle de preenchimento</h1>
+        </div>
+
+        <button id="refreshButton" class="refresh-button" type="button">Atualizar</button>
+      </section>
+
+      <section class="summary-grid" aria-label="Resumo">
+        <div class="metric">
+          <span>Hoje</span>
+          <strong id="todayMetric">--/--</strong>
+        </div>
+      </section>
+
+      <nav class="tabs" aria-label="Abas do controle">
+        <button class="tab-button active" type="button" data-tab="statusPanel">Status por data</button>
+        <button class="tab-button" type="button" data-tab="pivoPanel">Piv&ocirc; ligado</button>
+      </nav>
+
+      <section id="statusPanel" class="table-panel tab-panel active">
+        <div class="table-header">
+          <h2>Status por data</h2>
+          <span id="rangeLabel">Aguardando dados</span>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="statusRows">
+              <tr>
+                <td colspan="2" class="loading-cell">Carregando...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="pivoPanel" class="table-panel tab-panel">
+        <div class="table-header">
+          <h2>Piv&ocirc; ligado</h2>
+          <span id="pivoRangeLabel">Aguardando dados</span>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead id="pivoHead">
+              <tr>
+                <th>Piv&ocirc;</th>
+              </tr>
+            </thead>
+            <tbody id="pivoRows">
+              <tr>
+                <td class="loading-cell">Carregando...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
