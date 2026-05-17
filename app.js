@@ -114,7 +114,7 @@ function renderStatusTable(filledDates) {
     : `Até ${formatShortDate(today)}`;
 
   statusRows.innerHTML = '';
-  dates.forEach((date) => {
+  [...dates].reverse().forEach((date) => {
     const isFilled = filledDates.has(toDateKey(date));
     const row = document.createElement('tr');
     row.innerHTML = `
