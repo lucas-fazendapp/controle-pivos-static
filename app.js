@@ -5,19 +5,35 @@ const statusRows = document.querySelector('#statusRows');
 const pivoRangeLabel = document.querySelector('#pivoRangeLabel');
 const pivoHead = document.querySelector('#pivoHead');
 const pivoRows = document.querySelector('#pivoRows');
+const bioRangeLabel = document.querySelector('#bioRangeLabel');
+const bioHead = document.querySelector('#bioHead');
+const bioRows = document.querySelector('#bioRows');
 const tabButtons = document.querySelectorAll('.tab-button');
 
-const defaultPivoColumns = [5, 10, 15, 20];
-const extendedPivoColumns = [5, 10, 15, 20, 25, 30, 35, 40];
 const spreadsheetId = '1mGjbaGPV7p1V5VTQtgFJNnjf8sJSjHle3ejgO9Id2zo';
+const defaultIrrigationColumns = [5, 10, 15, 20];
+const extendedIrrigationColumns = [5, 10, 15, 20, 25, 30, 35, 40];
+const defaultBioColumns = [
+  { index: 6, piquete: 'P1' },
+  { index: 11, piquete: 'P2' },
+  { index: 16, piquete: 'P3' },
+  { index: 21, piquete: 'P4' },
+];
+const extendedBioColumns = [
+  ...defaultBioColumns,
+  { index: 26, piquete: 'P5' },
+  { index: 31, piquete: 'P6' },
+  { index: 36, piquete: 'P7' },
+  { index: 41, piquete: 'P8' },
+];
 const pivoSheets = [
-  { name: 'Erva', columns: defaultPivoColumns },
-  { name: 'Meio', columns: defaultPivoColumns },
-  { name: 'Sedevelha', columns: defaultPivoColumns },
-  { name: 'Ponta', columns: defaultPivoColumns },
-  { name: 'Novo', columns: defaultPivoColumns },
-  { name: 'Cascalho', columns: extendedPivoColumns },
-  { name: 'Retiro', columns: extendedPivoColumns },
+  { name: 'Erva', irrigationColumns: defaultIrrigationColumns, bioColumns: defaultBioColumns },
+  { name: 'Meio', irrigationColumns: defaultIrrigationColumns, bioColumns: defaultBioColumns },
+  { name: 'Sedevelha', irrigationColumns: defaultIrrigationColumns, bioColumns: defaultBioColumns },
+  { name: 'Ponta', irrigationColumns: defaultIrrigationColumns, bioColumns: defaultBioColumns },
+  { name: 'Novo', irrigationColumns: defaultIrrigationColumns, bioColumns: defaultBioColumns },
+  { name: 'Cascalho', irrigationColumns: extendedIrrigationColumns, bioColumns: extendedBioColumns },
+  { name: 'Retiro', irrigationColumns: extendedIrrigationColumns, bioColumns: extendedBioColumns },
 ];
 
 refreshButton.addEventListener('click', loadSheet);
@@ -30,6 +46,8 @@ async function loadSheet() {
   statusRows.innerHTML = '<tr><td colspan="2" class="loading-cell">Carregando...</td></tr>';
   pivoHead.innerHTML = '<tr><th>Pivô</th></tr>';
   pivoRows.innerHTML = '<tr><td class="loading-cell">Carregando...</td></tr>';
+  bioHead.innerHTML = '<tr><th>Pivô</th></tr>';
+  bioRows.innerHTML = '<tr><td class="loading-cell">Carregando...</td></tr>';
 
   try {
     const sheets = await Promise.all(pivoSheets.map(loadPivoSheet));
@@ -38,11 +56,14 @@ async function loadSheet() {
 
     renderStatusTable(filledDates);
     renderPivoTable(sheets);
+    renderBioinsumoTable(sheets);
   } catch (error) {
     rangeLabel.textContent = 'Erro ao carregar';
     pivoRangeLabel.textContent = 'Erro ao carregar';
+    bioRangeLabel.textContent = 'Erro ao carregar';
     statusRows.innerHTML = `<tr><td colspan="2" class="loading-cell">${error.message}</td></tr>`;
     pivoRows.innerHTML = `<tr><td class="loading-cell">${error.message}</td></tr>`;
+    bioRows.innerHTML = `<tr><td class="loading-cell">${error.message}</td></tr>`;
   } finally {
     refreshButton.disabled = false;
     refreshButton.textContent = 'Atualizar';
@@ -54,7 +75,9 @@ async function loadPivoSheet(sheet) {
   return {
     name: sheet.name,
     rows,
-    sums: readPivoSumsByDate(rows, sheet.columns),
+    irrigationSums: readSumsByDate(rows, sheet.irrigationColumns),
+    rainSums: readSumsByDate(rows, [1]),
+    bioSums: readBioinsumoByDate(rows, sheet.bioColumns),
   };
 }
 
@@ -70,7 +93,7 @@ function loadGoogleSheetRows(sheetName) {
     window[callbackName] = (payload) => {
       cleanup();
       if (!payload || payload.status !== 'ok') {
-        reject(new Error(`${sheetName}: resposta invalida do Google Sheets`));
+        reject(new Error(`${sheetName}: resposta inválida do Google Sheets`));
         return;
       }
       resolve(tableToRows(payload.table));
@@ -138,12 +161,7 @@ function renderPivoTable(sheets) {
     : `Até ${formatShortDate(today)}`;
 
   pivoRows.innerHTML = '';
-  pivoHead.innerHTML = `
-    <tr>
-      <th class="sticky-pivo">Pivô</th>
-      ${[...dates].reverse().map((date) => `<th class="date-column">${formatShortDate(date)}</th>`).join('')}
-    </tr>
-  `;
+  pivoHead.innerHTML = renderMatrixHead(dates);
 
   sheets.forEach((sheet) => {
     const row = document.createElement('tr');
@@ -153,14 +171,18 @@ function renderPivoTable(sheets) {
         .reverse()
         .map((date) => {
           const key = toDateKey(date);
-      const total = sheet.sums.get(key) || 0;
-      const isOn = total > 0;
+          const total = sheet.irrigationSums.get(key) || 0;
+          const rain = sheet.rainSums.get(key) || 0;
+          const isOn = total > 0;
+          const hasRain = rain > 0;
+          const pillClass = isOn && hasRain ? 'split' : isOn ? 'filled' : hasRain ? 'rain' : 'missing';
           return `
-            <td class="status-cell">
-              <span class="status-pill compact ${isOn ? 'filled' : 'missing'}">
+            <td class="status-cell ${isOn ? 'irrigated' : ''} ${hasRain ? 'rain' : ''}">
+              <span class="status-pill compact ${pillClass}">
                 ${isOn ? 'Ligou' : 'Não ligou'}
               </span>
               ${isOn ? `<span class="subtle-value">Soma: ${formatNumber(total)}</span>` : ''}
+              ${hasRain ? `<span class="subtle-value rain-text">Chuva: ${formatNumber(rain)}</span>` : ''}
             </td>
           `;
         })
@@ -168,6 +190,55 @@ function renderPivoTable(sheets) {
     `;
     pivoRows.append(row);
   });
+}
+
+function renderBioinsumoTable(sheets) {
+  const today = getToday();
+  const dates = buildLastThirtyDays(today);
+
+  bioRangeLabel.textContent = dates.length
+    ? `${formatShortDate(dates[0])} até ${formatShortDate(today)}`
+    : `Até ${formatShortDate(today)}`;
+
+  bioRows.innerHTML = '';
+  bioHead.innerHTML = renderMatrixHead(dates);
+
+  sheets.forEach((sheet) => {
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <th class="sticky-pivo row-header">${sheet.name}</th>
+      ${[...dates]
+        .reverse()
+        .map((date) => {
+          const bio = sheet.bioSums.get(toDateKey(date)) || { total: 0, piquetes: [] };
+          const hasBio = bio.total > 0;
+          return `
+            <td class="status-cell ${hasBio ? 'bio-yes' : 'bio-no'}">
+              <span class="status-pill compact ${hasBio ? 'filled' : 'bio-no'}">
+                ${hasBio ? 'Sim' : ''}
+              </span>
+              ${
+                hasBio
+                  ? `<span class="subtle-value">Soma: ${formatNumber(bio.total)}</span>
+                     <span class="subtle-value">Piquetes: ${bio.piquetes.join(', ')}</span>`
+                  : ''
+              }
+            </td>
+          `;
+        })
+        .join('')}
+    `;
+    bioRows.append(row);
+  });
+}
+
+function renderMatrixHead(dates) {
+  return `
+    <tr>
+      <th class="sticky-pivo">Pivô</th>
+      ${[...dates].reverse().map((date) => `<th class="date-column">${formatShortDate(date)}</th>`).join('')}
+    </tr>
+  `;
 }
 
 function buildLastThirtyDays(today) {
@@ -195,7 +266,7 @@ function readFilledDatesFromColumnA(rows) {
   return dates;
 }
 
-function readPivoSumsByDate(rows, columns) {
+function readSumsByDate(rows, columns) {
   const sums = new Map();
 
   rows.forEach((row) => {
@@ -210,38 +281,30 @@ function readPivoSumsByDate(rows, columns) {
   return sums;
 }
 
-function parseCsv(text) {
-  const rows = [];
-  let cell = '';
-  let row = [];
-  let quoted = false;
+function readBioinsumoByDate(rows, columns) {
+  const sums = new Map();
 
-  for (let i = 0; i < text.length; i += 1) {
-    const char = text[i];
-    const next = text[i + 1];
+  rows.forEach((row) => {
+    const date = parseDate(row[0]);
+    if (!date || date.getFullYear() < 2000) return;
 
-    if (char === '"' && quoted && next === '"') {
-      cell += '"';
-      i += 1;
-    } else if (char === '"') {
-      quoted = !quoted;
-    } else if (char === ',' && !quoted) {
-      row.push(cell.trim());
-      cell = '';
-    } else if ((char === '\n' || char === '\r') && !quoted) {
-      if (char === '\r' && next === '\n') i += 1;
-      row.push(cell.trim());
-      if (row.some(Boolean)) rows.push(row);
-      row = [];
-      cell = '';
-    } else {
-      cell += char;
-    }
-  }
+    const applied = columns
+      .map((column) => ({
+        piquete: column.piquete,
+        value: parseNumber(row[column.index]),
+      }))
+      .filter((entry) => entry.value > 0);
+    const total = applied.reduce((sum, entry) => sum + entry.value, 0);
+    const key = toDateKey(date);
+    const previous = sums.get(key) || { total: 0, piquetes: [] };
 
-  row.push(cell.trim());
-  if (row.some(Boolean)) rows.push(row);
-  return rows;
+    sums.set(key, {
+      total: previous.total + total,
+      piquetes: [...new Set([...previous.piquetes, ...applied.map((entry) => entry.piquete)])],
+    });
+  });
+
+  return sums;
 }
 
 function parseDate(value) {

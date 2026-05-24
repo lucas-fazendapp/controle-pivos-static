@@ -231,20 +231,31 @@ tr:last-child td {
   color: var(--red);
 }
 
+.status-pill.rain {
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+
+.status-pill.split {
+  background: linear-gradient(90deg, var(--green-soft) 0 50%, var(--blue-soft) 50% 100%);
+  color: var(--green);
+  box-shadow: inset -1px 0 0 rgba(35, 104, 181, 0.22);
+}
+
 .status-cell {
   background: #fff;
 }
 
 .status-cell.rain {
-  background: var(--blue-soft);
+  background: #fff;
 }
 
 .status-cell.irrigated {
-  background: var(--green-soft);
+  background: #fff;
 }
 
 .status-cell.irrigated.rain {
-  background: linear-gradient(90deg, var(--green-soft) 0 50%, var(--blue-soft) 50% 100%);
+  background: #fff;
 }
 
 .status-cell.bio-no {
