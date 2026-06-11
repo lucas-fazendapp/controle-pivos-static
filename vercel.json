@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/ndvi/update",
+      "schedule": "0 9 * * *"
+    }
+  ]
+}

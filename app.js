@@ -13,6 +13,11 @@ const sectionButtons = document.querySelectorAll('.section-button');
 const pastosStatus = document.querySelector('#pastosStatus');
 const pastosHead = document.querySelector('#pastosHead');
 const pastosRows = document.querySelector('#pastosRows');
+const ndviStatus = document.querySelector('#ndviStatus');
+const ndviMean = document.querySelector('#ndviMean');
+const ndviImageDate = document.querySelector('#ndviImageDate');
+const ndviUpdatedAt = document.querySelector('#ndviUpdatedAt');
+const ndviCloud = document.querySelector('#ndviCloud');
 
 const spreadsheetId = '1mGjbaGPV7p1V5VTQtgFJNnjf8sJSjHle3ejgO9Id2zo';
 const cattleSpreadsheetId = '1YLM7NkiUAaWqOsLpkj9OIkzrqxIqEx7gavmGlgQbeOk';
@@ -41,6 +46,8 @@ const pivoSheets = [
   { name: 'Cascalho', irrigationColumns: extendedIrrigationColumns, bioColumns: extendedBioColumns },
   { name: 'Retiro', irrigationColumns: extendedIrrigationColumns, bioColumns: extendedBioColumns },
 ];
+let ndviMap;
+let ndviLayer;
 
 refreshButton.addEventListener('click', loadSheet);
 tabButtons.forEach((button) => button.addEventListener('click', () => activateTab(button.dataset.tab)));
@@ -58,8 +65,13 @@ async function loadSheet() {
   pastosStatus.textContent = 'Carregando...';
   pastosHead.innerHTML = '<tr><th>Pastos Atuais</th></tr>';
   pastosRows.innerHTML = '<tr><td class="loading-cell">Carregando...</td></tr>';
+  ndviStatus.textContent = 'Carregando...';
+  ndviMean.textContent = '--';
+  ndviImageDate.textContent = '--';
+  ndviUpdatedAt.textContent = '--';
+  ndviCloud.textContent = '--';
 
-  await Promise.allSettled([loadIrrigationData(), loadCattleData()]);
+  await Promise.allSettled([loadIrrigationData(), loadCattleData(), loadNdviData()]);
   refreshButton.disabled = false;
   refreshButton.textContent = 'Atualizar';
 }
@@ -98,6 +110,21 @@ async function loadCattleData() {
   } catch (error) {
     pastosStatus.textContent = 'Erro ao carregar';
     pastosRows.innerHTML = `<tr><td class="loading-cell">${error.message}</td></tr>`;
+  }
+}
+
+async function loadNdviData() {
+  try {
+    const response = await fetch('/api/ndvi/latest', { cache: 'no-store' });
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || `Erro ${response.status}`);
+    }
+
+    renderNdvi(data);
+  } catch (error) {
+    ndviStatus.textContent = 'Erro ao carregar NDVI';
   }
 }
 
@@ -391,6 +418,41 @@ function renderPastosAtuaisTable(table) {
     : '<tr><td class="loading-cell">Nenhum lote encontrado.</td></tr>';
 }
 
+function renderNdvi(data) {
+  ndviStatus.textContent = data.imageDate ? `Imagem ${formatIsoDate(data.imageDate)}` : 'Atualizado';
+  ndviMean.textContent = typeof data.meanNdvi === 'number' ? data.meanNdvi.toFixed(2) : '--';
+  ndviImageDate.textContent = data.imageDate ? formatIsoDate(data.imageDate) : '--';
+  ndviUpdatedAt.textContent = data.updatedAt ? formatDateTime(data.updatedAt) : '--';
+  ndviCloud.textContent =
+    typeof data.cloudPercentage === 'number' ? `${data.cloudPercentage.toFixed(1)}%` : '--';
+
+  if (!window.L || !data.tileUrl) return;
+
+  if (!ndviMap) {
+    ndviMap = L.map('ndviMap', {
+      zoomControl: true,
+      scrollWheelZoom: false,
+    }).setView([-15.78, -47.93], 12);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap',
+    }).addTo(ndviMap);
+  }
+
+  if (ndviLayer) ndviMap.removeLayer(ndviLayer);
+  ndviLayer = L.tileLayer(data.tileUrl, {
+    opacity: 0.85,
+    attribution: 'Google Earth Engine',
+  }).addTo(ndviMap);
+
+  if (data.bounds) {
+    ndviMap.fitBounds(data.bounds, { padding: [20, 20] });
+  }
+
+  setTimeout(() => ndviMap.invalidateSize(), 100);
+}
+
 function renderLotWithUa(lot, uaTotal) {
   return `
     <div class="lot-cell">
@@ -587,6 +649,20 @@ function formatNumber(value) {
   });
 }
 
+function formatIsoDate(value) {
+  const [year, month, day] = String(value).slice(0, 10).split('-');
+  return year && month && day ? `${day}/${month}/${year}` : value;
+}
+
+function formatDateTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  });
+}
+
 function activateTab(panelId) {
   const targetPanel = document.getElementById(panelId);
   const section = targetPanel?.closest('.section-panel');
@@ -602,6 +678,10 @@ function activateSection(sectionId) {
   document
     .querySelectorAll('.section-panel')
     .forEach((section) => section.classList.toggle('active', section.id === sectionId));
+
+  if (sectionId === 'ndviSection' && ndviMap) {
+    setTimeout(() => ndviMap.invalidateSize(), 80);
+  }
 }
 
 function escapeHtml(value) {

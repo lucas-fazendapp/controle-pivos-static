@@ -405,6 +405,85 @@ tbody .sticky-pivo {
   text-align: center;
 }
 
+.ndvi-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 250px;
+  gap: 18px;
+  padding: 18px;
+}
+
+.ndvi-map {
+  min-height: 520px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--gray-soft);
+}
+
+.ndvi-sidebar {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.ndvi-card,
+.ndvi-legend {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 14px;
+}
+
+.ndvi-card {
+  display: grid;
+  gap: 8px;
+}
+
+.ndvi-card span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ndvi-card strong {
+  color: var(--text);
+  font-size: 22px;
+  line-height: 1.1;
+}
+
+.ndvi-legend {
+  display: grid;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ndvi-legend span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legend-color {
+  display: inline-block;
+  width: 22px;
+  height: 12px;
+  border-radius: 999px;
+}
+
+.legend-color.low {
+  background: #d93a2f;
+}
+
+.legend-color.mid {
+  background: #f3d34a;
+}
+
+.legend-color.high {
+  background: #278b4d;
+}
+
 @media (max-width: 700px) {
   .app-shell {
     width: min(100% - 20px, 980px);
@@ -433,6 +512,14 @@ tbody .sticky-pivo {
 
   .table-wrap {
     max-height: none;
+  }
+
+  .ndvi-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .ndvi-map {
+    min-height: 380px;
   }
 
   th,

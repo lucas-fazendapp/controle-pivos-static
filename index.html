@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Controle ERVA</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -26,6 +27,7 @@
       <nav class="section-tabs" aria-label="Áreas do controle">
         <button class="section-button active" type="button" data-section="irrigationSection">Irriga&ccedil;&atilde;o</button>
         <button class="section-button" type="button" data-section="cattleSection">Gado</button>
+        <button class="section-button" type="button" data-section="ndviSection">NDVI</button>
       </nav>
 
       <section id="irrigationSection" class="section-panel active">
@@ -130,8 +132,47 @@
           </div>
         </section>
       </section>
+
+      <section id="ndviSection" class="section-panel">
+        <section class="table-panel">
+          <div class="table-header">
+            <h2>Mapa NDVI</h2>
+            <span id="ndviStatus">Aguardando dados</span>
+          </div>
+
+          <div class="ndvi-layout">
+            <div id="ndviMap" class="ndvi-map" aria-label="Mapa NDVI da área FH"></div>
+
+            <aside class="ndvi-sidebar" aria-label="Resumo NDVI">
+              <div class="ndvi-card">
+                <span>NDVI médio</span>
+                <strong id="ndviMean">--</strong>
+              </div>
+              <div class="ndvi-card">
+                <span>Imagem Sentinel-2</span>
+                <strong id="ndviImageDate">--</strong>
+              </div>
+              <div class="ndvi-card">
+                <span>Atualização</span>
+                <strong id="ndviUpdatedAt">--</strong>
+              </div>
+              <div class="ndvi-card">
+                <span>Nuvem</span>
+                <strong id="ndviCloud">--</strong>
+              </div>
+
+              <div class="ndvi-legend" aria-label="Legenda NDVI">
+                <span><i class="legend-color low"></i>Baixo vigor</span>
+                <span><i class="legend-color mid"></i>Intermediário</span>
+                <span><i class="legend-color high"></i>Alto vigor</span>
+              </div>
+            </aside>
+          </div>
+        </section>
+      </section>
     </main>
 
-    <script src="app.js?v=2026-05-24-bioinsumo-chuva"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="app.js?v=2026-06-11-ndvi"></script>
   </body>
 </html>
