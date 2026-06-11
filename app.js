@@ -336,11 +336,18 @@ function renderBioinsumoTable(sheets) {
 }
 
 function renderPastosAtuaisTable(table) {
-  pastosStatus.textContent = `${table.rows.length} registro(s)`;
+  const hiddenColumns = new Set(['EQ.PASTO']);
+  const visibleColumnIndexes = table.columns
+    .map((column, index) => ({ column, index }))
+    .filter(({ column }) => !hiddenColumns.has(normalizeText(column)));
   const statusColumnIndex = table.columns.findIndex((column) => normalizeText(column) === 'STATUS');
+  const pastoColumnIndex = table.columns.findIndex((column) => normalizeText(column) === 'PASTO ATUAL');
+  const movementColumnIndex = table.columns.findIndex((column) => normalizeText(column) === 'DATA ULT. MOV.');
+
+  pastosStatus.textContent = `${table.rows.length} registro(s)`;
   pastosHead.innerHTML = `
     <tr>
-      ${table.columns.map((column) => `<th>${escapeHtml(column)}</th>`).join('')}
+      ${visibleColumnIndexes.map(({ column }) => `<th>${escapeHtml(column)}</th>`).join('')}
     </tr>
   `;
   pastosRows.innerHTML = table.rows.length
@@ -348,10 +355,19 @@ function renderPastosAtuaisTable(table) {
         .map(
           (row) => `
             <tr>
-              ${row
-                .map((cell, index) => {
-                  if (index !== statusColumnIndex) return `<td>${escapeHtml(cell)}</td>`;
-                  return `<td><span class="status-pill compact cattle-status ${statusClass(cell)}">${escapeHtml(cell)}</span></td>`;
+              ${visibleColumnIndexes
+                .map(({ index }) => {
+                  const cell = row[index] || '';
+
+                  if (index === pastoColumnIndex) {
+                    return `<td>${renderPastureTags(cell)}</td>`;
+                  }
+
+                  if (index === statusColumnIndex) {
+                    return `<td>${renderCattleStatus(cell, row[movementColumnIndex])}</td>`;
+                  }
+
+                  return `<td>${escapeHtml(cell)}</td>`;
                 })
                 .join('')}
             </tr>
@@ -361,12 +377,48 @@ function renderPastosAtuaisTable(table) {
     : '<tr><td class="loading-cell">Nenhum lote encontrado.</td></tr>';
 }
 
+function renderPastureTags(value) {
+  const pastures = String(value || '')
+    .split('|')
+    .map((pasture) => pasture.trim())
+    .filter(Boolean);
+
+  if (!pastures.length) return '';
+
+  return `
+    <div class="tag-list">
+      ${pastures.map((pasture) => `<span class="pasture-tag">${escapeHtml(pasture)}</span>`).join('')}
+    </div>
+  `;
+}
+
+function renderCattleStatus(status, movementDateValue) {
+  const normalized = normalizeText(status);
+
+  if (normalized === 'ATIVO') {
+    const days = daysSinceMovement(movementDateValue);
+    const label = days === null ? 'ATIVO' : `${days} dia${days === 1 ? '' : 's'}`;
+    return `<span class="status-pill compact cattle-status active">${escapeHtml(label)}</span>`;
+  }
+
+  return `<span class="status-pill compact cattle-status ${statusClass(status)}">${escapeHtml(status)}</span>`;
+}
+
 function statusClass(value) {
   const normalized = normalizeText(value);
   if (normalized === 'ATIVO') return 'active';
-  if (normalized === 'SEM PASTO') return 'neutral';
-  if (normalized === 'ZERADO') return 'empty';
+  if (normalized === 'SEM PASTO') return 'warning';
+  if (normalized === 'ZERADO') return 'neutral';
   return 'neutral';
+}
+
+function daysSinceMovement(value) {
+  const movementDate = parseDate(value);
+  if (!movementDate) return null;
+
+  const today = getToday();
+  const diff = today.getTime() - movementDate.getTime();
+  return Math.max(0, Math.floor(diff / 86400000));
 }
 
 function renderMatrixHead(dates) {

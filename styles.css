@@ -12,6 +12,8 @@
   --blue: #2368b5;
   --blue-soft: #e2f0ff;
   --gray-soft: #eef2f5;
+  --yellow: #946400;
+  --yellow-soft: #fff4cc;
   --button: #1d6f63;
 }
 
@@ -302,9 +304,26 @@ tr:last-child td {
   color: var(--muted);
 }
 
-.status-pill.cattle-status.empty {
-  background: var(--red-soft);
-  color: var(--red);
+.status-pill.cattle-status.warning {
+  background: var(--yellow-soft);
+  color: var(--yellow);
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pasture-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  border-radius: 8px;
+  background: var(--blue-soft);
+  color: var(--blue);
+  font-weight: 700;
+  padding: 0 10px;
 }
 
 .subtle-value {
