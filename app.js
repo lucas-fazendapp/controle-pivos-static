@@ -9,8 +9,14 @@ const bioRangeLabel = document.querySelector('#bioRangeLabel');
 const bioHead = document.querySelector('#bioHead');
 const bioRows = document.querySelector('#bioRows');
 const tabButtons = document.querySelectorAll('.tab-button');
+const sectionButtons = document.querySelectorAll('.section-button');
+const pastosStatus = document.querySelector('#pastosStatus');
+const pastosHead = document.querySelector('#pastosHead');
+const pastosRows = document.querySelector('#pastosRows');
 
 const spreadsheetId = '1mGjbaGPV7p1V5VTQtgFJNnjf8sJSjHle3ejgO9Id2zo';
+const cattleSpreadsheetId = '1YLM7NkiUAaWqOsLpkj9OIkzrqxIqEx7gavmGlgQbeOk';
+const cattleGid = '259459725';
 const defaultIrrigationColumns = [5, 10, 15, 20];
 const extendedIrrigationColumns = [5, 10, 15, 20, 25, 30, 35, 40];
 const defaultBioColumns = [
@@ -38,6 +44,7 @@ const pivoSheets = [
 
 refreshButton.addEventListener('click', loadSheet);
 tabButtons.forEach((button) => button.addEventListener('click', () => activateTab(button.dataset.tab)));
+sectionButtons.forEach((button) => button.addEventListener('click', () => activateSection(button.dataset.section)));
 loadSheet();
 
 async function loadSheet() {
@@ -48,7 +55,16 @@ async function loadSheet() {
   pivoRows.innerHTML = '<tr><td class="loading-cell">Carregando...</td></tr>';
   bioHead.innerHTML = '<tr><th>Pivô</th></tr>';
   bioRows.innerHTML = '<tr><td class="loading-cell">Carregando...</td></tr>';
+  pastosStatus.textContent = 'Carregando...';
+  pastosHead.innerHTML = '<tr><th>Pastos Atuais</th></tr>';
+  pastosRows.innerHTML = '<tr><td class="loading-cell">Carregando...</td></tr>';
 
+  await Promise.allSettled([loadIrrigationData(), loadCattleData()]);
+  refreshButton.disabled = false;
+  refreshButton.textContent = 'Atualizar';
+}
+
+async function loadIrrigationData() {
   try {
     const sheets = await Promise.all(pivoSheets.map(loadPivoSheet));
     const ervaSheet = sheets.find((sheet) => sheet.name === 'Erva');
@@ -64,14 +80,33 @@ async function loadSheet() {
     statusRows.innerHTML = `<tr><td colspan="2" class="loading-cell">${error.message}</td></tr>`;
     pivoRows.innerHTML = `<tr><td class="loading-cell">${error.message}</td></tr>`;
     bioRows.innerHTML = `<tr><td class="loading-cell">${error.message}</td></tr>`;
-  } finally {
-    refreshButton.disabled = false;
-    refreshButton.textContent = 'Atualizar';
+  }
+}
+
+async function loadCattleData() {
+  try {
+    const table = await loadGoogleSheetTable({
+      spreadsheetId: cattleSpreadsheetId,
+      gid: cattleGid,
+      label: 'Gado',
+    });
+    const displayTable = { columns: table.columns, rows: table.displayRows };
+    const pastosAtuais = displayTable.rows.some((row) => row.some((cell) => normalizeText(cell) === 'PASTOS_ATUAIS'))
+      ? extractNamedTable(displayTable.rows, 'PASTOS_ATUAIS')
+      : displayTable;
+    renderPastosAtuaisTable(pastosAtuais);
+  } catch (error) {
+    pastosStatus.textContent = 'Erro ao carregar';
+    pastosRows.innerHTML = `<tr><td class="loading-cell">${error.message}</td></tr>`;
   }
 }
 
 async function loadPivoSheet(sheet) {
-  const rows = await loadGoogleSheetRows(sheet.name);
+  const rows = await loadGoogleSheetRows({
+    spreadsheetId,
+    sheetName: sheet.name,
+    label: sheet.name,
+  });
   return {
     name: sheet.name,
     rows,
@@ -81,32 +116,37 @@ async function loadPivoSheet(sheet) {
   };
 }
 
-function loadGoogleSheetRows(sheetName) {
+function loadGoogleSheetRows({ spreadsheetId, sheetName, gid, label }) {
+  return loadGoogleSheetTable({ spreadsheetId, sheetName, gid, label }).then((table) => table.rows);
+}
+
+function loadGoogleSheetTable({ spreadsheetId, sheetName, gid, label }) {
   return new Promise((resolve, reject) => {
     const callbackName = `handleSheet_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const script = document.createElement('script');
     const timeout = window.setTimeout(() => {
       cleanup();
-      reject(new Error(`${sheetName}: tempo esgotado ao carregar`));
+      reject(new Error(`${label}: tempo esgotado ao carregar`));
     }, 20000);
 
     window[callbackName] = (payload) => {
       cleanup();
       if (!payload || payload.status !== 'ok') {
-        reject(new Error(`${sheetName}: resposta inválida do Google Sheets`));
+        reject(new Error(`${label}: resposta inválida do Google Sheets`));
         return;
       }
-      resolve(tableToRows(payload.table));
+      resolve(tableFromGoogle(payload.table));
     };
 
     script.onerror = () => {
       cleanup();
-      reject(new Error(`${sheetName}: erro ao carregar script`));
+      reject(new Error(`${label}: erro ao carregar script`));
     };
 
+    const source = gid ? `gid=${encodeURIComponent(gid)}` : `sheet=${encodeURIComponent(sheetName)}`;
     script.src =
       `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq` +
-      `?tqx=out:json;responseHandler:${callbackName}&sheet=${encodeURIComponent(sheetName)}`;
+      `?tqx=out:json;responseHandler:${callbackName}&${source}`;
     document.head.append(script);
 
     function cleanup() {
@@ -117,14 +157,77 @@ function loadGoogleSheetRows(sheetName) {
   });
 }
 
-function tableToRows(table) {
-  return (table.rows || []).map((row) =>
-    (row.c || []).map((cell, index) => {
-      if (!cell) return '';
-      if (index === 0 && cell.f) return cell.f;
-      return cell.v ?? cell.f ?? '';
-    }),
-  );
+function extractNamedTable(rows, tableName) {
+  const marker = normalizeText(tableName);
+  const markerRowIndex = rows.findIndex((row) => row.some((cell) => normalizeText(cell) === marker));
+  if (markerRowIndex < 0) {
+    throw new Error(
+      'Não encontrei a seção PASTOS_ATUAIS. Verifique se a planilha de gado está pública para visualização.',
+    );
+  }
+
+  const headerRowIndex = findNextContentRow(rows, markerRowIndex + 1);
+  if (headerRowIndex < 0) throw new Error('Encontrei PASTOS_ATUAIS, mas não encontrei o cabeçalho da tabela.');
+
+  const headerRow = rows[headerRowIndex];
+  const columns = headerRow
+    .map((value, index) => ({ index, label: String(value || '').trim() }))
+    .filter((column) => column.label);
+  const data = [];
+
+  for (let rowIndex = headerRowIndex + 1; rowIndex < rows.length; rowIndex += 1) {
+    const row = rows[rowIndex];
+    const cells = columns.map((column) => String(row[column.index] ?? '').trim());
+    if (cells.every((cell) => !cell)) break;
+    if (looksLikeSectionTitle(cells)) break;
+    data.push(cells);
+  }
+
+  return {
+    columns: columns.map((column) => column.label),
+    rows: data,
+  };
+}
+
+function findNextContentRow(rows, startIndex) {
+  for (let index = startIndex; index < rows.length; index += 1) {
+    if (rows[index].some((cell) => String(cell || '').trim())) return index;
+  }
+  return -1;
+}
+
+function looksLikeSectionTitle(cells) {
+  const filled = cells.filter(Boolean);
+  if (filled.length !== 1) return false;
+  const value = normalizeText(filled[0]);
+  return value.includes('_') && value === value.toUpperCase();
+}
+
+function normalizeText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toUpperCase();
+}
+
+function tableFromGoogle(table) {
+  return {
+    columns: (table.cols || []).map((column, index) => String(column.label || column.id || `Coluna ${index + 1}`)),
+    rows: (table.rows || []).map((row) =>
+      (row.c || []).map((cell, index) => {
+        if (!cell) return '';
+        if (index === 0 && cell.f) return cell.f;
+        return cell.v ?? cell.f ?? '';
+      }),
+    ),
+    displayRows: (table.rows || []).map((row) =>
+      (row.c || []).map((cell) => {
+        if (!cell) return '';
+        return cell.f ?? cell.v ?? '';
+      }),
+    ),
+  };
 }
 
 function renderStatusTable(filledDates) {
@@ -230,6 +333,40 @@ function renderBioinsumoTable(sheets) {
     `;
     bioRows.append(row);
   });
+}
+
+function renderPastosAtuaisTable(table) {
+  pastosStatus.textContent = `${table.rows.length} registro(s)`;
+  const statusColumnIndex = table.columns.findIndex((column) => normalizeText(column) === 'STATUS');
+  pastosHead.innerHTML = `
+    <tr>
+      ${table.columns.map((column) => `<th>${escapeHtml(column)}</th>`).join('')}
+    </tr>
+  `;
+  pastosRows.innerHTML = table.rows.length
+    ? table.rows
+        .map(
+          (row) => `
+            <tr>
+              ${row
+                .map((cell, index) => {
+                  if (index !== statusColumnIndex) return `<td>${escapeHtml(cell)}</td>`;
+                  return `<td><span class="status-pill compact cattle-status ${statusClass(cell)}">${escapeHtml(cell)}</span></td>`;
+                })
+                .join('')}
+            </tr>
+          `,
+        )
+        .join('')
+    : '<tr><td class="loading-cell">Nenhum lote encontrado.</td></tr>';
+}
+
+function statusClass(value) {
+  const normalized = normalizeText(value);
+  if (normalized === 'ATIVO') return 'active';
+  if (normalized === 'SEM PASTO') return 'neutral';
+  if (normalized === 'ZERADO') return 'empty';
+  return 'neutral';
 }
 
 function renderMatrixHead(dates) {
@@ -376,8 +513,27 @@ function formatNumber(value) {
 }
 
 function activateTab(panelId) {
-  tabButtons.forEach((button) => button.classList.toggle('active', button.dataset.tab === panelId));
+  const targetPanel = document.getElementById(panelId);
+  const section = targetPanel?.closest('.section-panel');
+  const scopedButtons = section ? section.querySelectorAll('.tab-button') : tabButtons;
+  const scopedPanels = section ? section.querySelectorAll('.tab-panel') : document.querySelectorAll('.tab-panel');
+
+  scopedButtons.forEach((button) => button.classList.toggle('active', button.dataset.tab === panelId));
+  scopedPanels.forEach((panel) => panel.classList.toggle('active', panel.id === panelId));
+}
+
+function activateSection(sectionId) {
+  sectionButtons.forEach((button) => button.classList.toggle('active', button.dataset.section === sectionId));
   document
-    .querySelectorAll('.tab-panel')
-    .forEach((panel) => panel.classList.toggle('active', panel.id === panelId));
+    .querySelectorAll('.section-panel')
+    .forEach((section) => section.classList.toggle('active', section.id === sectionId));
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }

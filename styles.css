@@ -124,12 +124,18 @@ h2 {
   line-height: 1;
 }
 
+.section-tabs,
 .tabs {
   display: flex;
   gap: 8px;
   margin-bottom: 12px;
 }
 
+.section-tabs {
+  margin-bottom: 18px;
+}
+
+.section-button,
 .tab-button {
   min-height: 40px;
   border: 1px solid var(--line);
@@ -141,10 +147,25 @@ h2 {
   padding: 0 14px;
 }
 
+.section-button {
+  min-height: 46px;
+  min-width: 150px;
+  font-size: 16px;
+}
+
+.section-button.active,
 .tab-button.active {
   border-color: var(--button);
   background: var(--button);
   color: #fff;
+}
+
+.section-panel {
+  display: none;
+}
+
+.section-panel.active {
+  display: block;
 }
 
 .tab-panel {
@@ -271,6 +292,21 @@ tr:last-child td {
   color: var(--muted);
 }
 
+.status-pill.cattle-status.active {
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.status-pill.cattle-status.neutral {
+  background: var(--gray-soft);
+  color: var(--muted);
+}
+
+.status-pill.cattle-status.empty {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
 .subtle-value {
   display: block;
   margin-top: 5px;
@@ -327,6 +363,11 @@ tbody .sticky-pivo {
   .tabs {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .section-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
   }
 
   .table-wrap {
