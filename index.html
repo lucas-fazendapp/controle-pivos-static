@@ -108,12 +108,47 @@
       <section id="cattleSection" class="section-panel">
         <nav class="tabs" aria-label="Abas de gado">
           <button class="tab-button active" type="button" data-tab="pastosAtuaisPanel">Pastos Atuais</button>
+          <button class="tab-button" type="button" data-tab="pastosDetalhePanel">Detalhe</button>
+          <button class="tab-button" type="button" data-tab="pastosHistoricoPanel">Histórico</button>
         </nav>
 
         <section id="pastosAtuaisPanel" class="table-panel tab-panel active">
           <div class="table-header">
             <h2>Pastos Atuais</h2>
             <span id="pastosStatus">Aguardando dados</span>
+          </div>
+
+          <div class="pasture-controls" aria-label="Filtros de pastos">
+            <label>
+              Ordenar
+              <select id="pastureSort">
+                <option value="uaHaAtual" selected>UA/ha atual</option>
+                <option value="mediaUaHaAno">Média UA/ha ano</option>
+                <option value="diasOcupadoAno">Dias ocupado ano</option>
+                <option value="ultimoUso">Último uso</option>
+                <option value="area">Área</option>
+              </select>
+            </label>
+            <label>
+              Status
+              <select id="pastureStatusFilter">
+                <option value="todos" selected>Todos</option>
+                <option value="ocupado">Ocupado</option>
+                <option value="descanso">Descanso</option>
+                <option value="sem_historico">Sem histórico</option>
+              </select>
+            </label>
+            <label>
+              Região
+              <select id="pastureRegionFilter">
+                <option value="todos" selected>Todas</option>
+                <option value="A">Região A</option>
+                <option value="B">Região B</option>
+                <option value="C">Região C</option>
+                <option value="P">Região P</option>
+                <option value="RESERVA">Reserva</option>
+              </select>
+            </label>
           </div>
 
           <div class="table-wrap">
@@ -129,6 +164,77 @@
                 </tr>
               </tbody>
             </table>
+          </div>
+        </section>
+
+        <section id="pastosDetalhePanel" class="table-panel tab-panel">
+          <div class="table-header">
+            <h2>Detalhe do Pasto</h2>
+            <span id="pastureDetailStatus">Aguardando dados</span>
+          </div>
+
+          <div class="pasture-detail">
+            <label class="pasture-select-label">
+              Pasto
+              <select id="pastureDetailSelect">
+                <option value="">Carregando...</option>
+              </select>
+            </label>
+
+            <div id="pastureDetailCards" class="detail-card-grid">
+              <div class="loading-cell">Carregando...</div>
+            </div>
+
+            <div id="pastureReadiness" class="readiness-card">Aguardando dados</div>
+
+            <div class="chart-panel">
+              <h3>Médias mensais UA/ha</h3>
+              <div id="pastureMonthlyChart" class="bar-chart"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="pastosHistoricoPanel" class="table-panel tab-panel">
+          <div class="table-header">
+            <h2>Histórico de Pastos</h2>
+            <span id="pastureHistoryStatus">Aguardando dados</span>
+          </div>
+
+          <div class="pasture-controls" aria-label="Filtros de histórico">
+            <label>
+              Mês
+              <select id="historyMonthFilter">
+                <option value="">Carregando...</option>
+              </select>
+            </label>
+            <label>
+              Comparar pastos
+              <select id="historyPastureFilter" multiple size="3"></select>
+            </label>
+          </div>
+
+          <div class="history-layout">
+            <div class="chart-panel">
+              <h3>Comparação mensal</h3>
+              <div id="historyLineChart" class="line-chart"></div>
+            </div>
+
+            <div class="table-wrap history-ranking-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Pasto</th>
+                    <th>Média UA/ha</th>
+                    <th>Dias ocupado</th>
+                  </tr>
+                </thead>
+                <tbody id="historyRankingRows">
+                  <tr>
+                    <td colspan="3" class="loading-cell">Carregando...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
       </section>
@@ -173,6 +279,6 @@
     </main>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="app.js?v=2026-06-11-ndvi"></script>
+    <script src="app.js?v=2026-06-11-pastos"></script>
   </body>
 </html>
