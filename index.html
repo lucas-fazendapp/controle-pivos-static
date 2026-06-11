@@ -23,77 +23,112 @@
         </div>
       </section>
 
-      <nav class="tabs" aria-label="Abas do controle">
-        <button class="tab-button active" type="button" data-tab="statusPanel">Status por data</button>
-        <button class="tab-button" type="button" data-tab="pivoPanel">Piv&ocirc; ligado</button>
-        <button class="tab-button" type="button" data-tab="bioinsumoPanel">Bioinsumo</button>
+      <nav class="section-tabs" aria-label="Áreas do controle">
+        <button class="section-button active" type="button" data-section="irrigationSection">Irriga&ccedil;&atilde;o</button>
+        <button class="section-button" type="button" data-section="cattleSection">Gado</button>
       </nav>
 
-      <section id="statusPanel" class="table-panel tab-panel active">
-        <div class="table-header">
-          <h2>Status por data</h2>
-          <span id="rangeLabel">Aguardando dados</span>
-        </div>
+      <section id="irrigationSection" class="section-panel active">
+        <nav class="tabs" aria-label="Abas de irrigação">
+          <button class="tab-button active" type="button" data-tab="statusPanel">Status por data</button>
+          <button class="tab-button" type="button" data-tab="pivoPanel">Piv&ocirc; ligado</button>
+          <button class="tab-button" type="button" data-tab="bioinsumoPanel">Bioinsumo</button>
+        </nav>
 
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Data</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody id="statusRows">
-              <tr>
-                <td colspan="2" class="loading-cell">Carregando...</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <section id="statusPanel" class="table-panel tab-panel active">
+          <div class="table-header">
+            <h2>Status por data</h2>
+            <span id="rangeLabel">Aguardando dados</span>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="statusRows">
+                <tr>
+                  <td colspan="2" class="loading-cell">Carregando...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="pivoPanel" class="table-panel tab-panel">
+          <div class="table-header">
+            <h2>Piv&ocirc; ligado</h2>
+            <span id="pivoRangeLabel">Aguardando dados</span>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead id="pivoHead">
+                <tr>
+                  <th>Piv&ocirc;</th>
+                </tr>
+              </thead>
+              <tbody id="pivoRows">
+                <tr>
+                  <td class="loading-cell">Carregando...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="bioinsumoPanel" class="table-panel tab-panel">
+          <div class="table-header">
+            <h2>Bioinsumo</h2>
+            <span id="bioRangeLabel">Aguardando dados</span>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead id="bioHead">
+                <tr>
+                  <th>Piv&ocirc;</th>
+                </tr>
+              </thead>
+              <tbody id="bioRows">
+                <tr>
+                  <td class="loading-cell">Carregando...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
       </section>
 
-      <section id="pivoPanel" class="table-panel tab-panel">
-        <div class="table-header">
-          <h2>Piv&ocirc; ligado</h2>
-          <span id="pivoRangeLabel">Aguardando dados</span>
-        </div>
+      <section id="cattleSection" class="section-panel">
+        <nav class="tabs" aria-label="Abas de gado">
+          <button class="tab-button active" type="button" data-tab="pastosAtuaisPanel">Pastos Atuais</button>
+        </nav>
 
-        <div class="table-wrap">
-          <table>
-            <thead id="pivoHead">
-              <tr>
-                <th>Piv&ocirc;</th>
-              </tr>
-            </thead>
-            <tbody id="pivoRows">
-              <tr>
-                <td class="loading-cell">Carregando...</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
+        <section id="pastosAtuaisPanel" class="table-panel tab-panel active">
+          <div class="table-header">
+            <h2>Pastos Atuais</h2>
+            <span id="pastosStatus">Aguardando dados</span>
+          </div>
 
-      <section id="bioinsumoPanel" class="table-panel tab-panel">
-        <div class="table-header">
-          <h2>Bioinsumo</h2>
-          <span id="bioRangeLabel">Aguardando dados</span>
-        </div>
-
-        <div class="table-wrap">
-          <table>
-            <thead id="bioHead">
-              <tr>
-                <th>Piv&ocirc;</th>
-              </tr>
-            </thead>
-            <tbody id="bioRows">
-              <tr>
-                <td class="loading-cell">Carregando...</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+          <div class="table-wrap">
+            <table>
+              <thead id="pastosHead">
+                <tr>
+                  <th>Pastos Atuais</th>
+                </tr>
+              </thead>
+              <tbody id="pastosRows">
+                <tr>
+                  <td class="loading-cell">Carregando...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
       </section>
     </main>
 
