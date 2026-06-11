@@ -336,18 +336,24 @@ function renderBioinsumoTable(sheets) {
 }
 
 function renderPastosAtuaisTable(table) {
-  const hiddenColumns = new Set(['EQ.PASTO']);
-  const visibleColumnIndexes = table.columns
-    .map((column, index) => ({ column, index }))
-    .filter(({ column }) => !hiddenColumns.has(normalizeText(column)));
+  const columnIndexes = Object.fromEntries(table.columns.map((column, index) => [normalizeText(column), index]));
+  const displayColumns = [
+    { label: 'Lote', type: 'lot', index: columnIndexes.LOTE },
+    { label: 'Pasto Atual', type: 'pastures', index: columnIndexes['PASTO ATUAL'] },
+    { label: 'Área Total (ha)', type: 'area', index: columnIndexes['AREA TOTAL (HA)'] },
+    { label: 'UA/ha Atual', type: 'plain', index: columnIndexes['UA/HA ATUAL'] },
+    { label: 'Data Últ. Mov.', type: 'plain', index: columnIndexes['DATA ULT. MOV.'] },
+    { label: 'Status', type: 'status', index: columnIndexes.STATUS },
+  ].filter((column) => column.index !== undefined);
+
+  const uaTotalColumnIndex = columnIndexes['UA TOTAL'];
   const statusColumnIndex = table.columns.findIndex((column) => normalizeText(column) === 'STATUS');
-  const pastoColumnIndex = table.columns.findIndex((column) => normalizeText(column) === 'PASTO ATUAL');
   const movementColumnIndex = table.columns.findIndex((column) => normalizeText(column) === 'DATA ULT. MOV.');
 
   pastosStatus.textContent = `${table.rows.length} registro(s)`;
   pastosHead.innerHTML = `
     <tr>
-      ${visibleColumnIndexes.map(({ column }) => `<th>${escapeHtml(column)}</th>`).join('')}
+      ${displayColumns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join('')}
     </tr>
   `;
   pastosRows.innerHTML = table.rows.length
@@ -355,15 +361,23 @@ function renderPastosAtuaisTable(table) {
         .map(
           (row) => `
             <tr>
-              ${visibleColumnIndexes
-                .map(({ index }) => {
+              ${displayColumns
+                .map(({ index, type }) => {
                   const cell = row[index] || '';
 
-                  if (index === pastoColumnIndex) {
+                  if (type === 'lot') {
+                    return `<td>${renderLotWithUa(cell, row[uaTotalColumnIndex])}</td>`;
+                  }
+
+                  if (type === 'pastures') {
                     return `<td>${renderPastureTags(cell)}</td>`;
                   }
 
-                  if (index === statusColumnIndex) {
+                  if (type === 'area') {
+                    return `<td class="area-cell"><span class="area-arrow" aria-hidden="true">→</span>${escapeHtml(cell)}</td>`;
+                  }
+
+                  if (index === statusColumnIndex || type === 'status') {
                     return `<td>${renderCattleStatus(cell, row[movementColumnIndex])}</td>`;
                   }
 
@@ -375,6 +389,15 @@ function renderPastosAtuaisTable(table) {
         )
         .join('')
     : '<tr><td class="loading-cell">Nenhum lote encontrado.</td></tr>';
+}
+
+function renderLotWithUa(lot, uaTotal) {
+  return `
+    <div class="lot-cell">
+      <strong>${escapeHtml(lot)}</strong>
+      <span class="ua-badge">${escapeHtml(uaTotal || '0')}</span>
+    </div>
+  `;
 }
 
 function renderPastureTags(value) {

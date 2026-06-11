@@ -309,6 +309,29 @@ tr:last-child td {
   color: var(--yellow);
 }
 
+.lot-cell {
+  display: grid;
+  gap: 7px;
+}
+
+.lot-cell strong {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.ua-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-height: 28px;
+  border-radius: 8px;
+  background: var(--gray-soft);
+  color: var(--muted);
+  font-weight: 700;
+  padding: 0 10px;
+}
+
 .tag-list {
   display: flex;
   flex-wrap: wrap;
@@ -324,6 +347,25 @@ tr:last-child td {
   color: var(--blue);
   font-weight: 700;
   padding: 0 10px;
+}
+
+.area-cell {
+  color: var(--text);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.area-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-right: 8px;
+  border-radius: 999px;
+  background: var(--gray-soft);
+  color: var(--muted);
+  font-weight: 700;
 }
 
 .subtle-value {
