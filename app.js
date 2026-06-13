@@ -13,6 +13,22 @@ const sectionButtons = document.querySelectorAll('.section-button');
 const pastosStatus = document.querySelector('#pastosStatus');
 const pastosHead = document.querySelector('#pastosHead');
 const pastosRows = document.querySelector('#pastosRows');
+const pastureSummaryStatus = document.querySelector('#pastureSummaryStatus');
+const pastureSummarySort = document.querySelector('#pastureSummarySort');
+const pastureSummaryStatusFilter = document.querySelector('#pastureSummaryStatusFilter');
+const pastureSummaryRegionFilter = document.querySelector('#pastureSummaryRegionFilter');
+const pastureSummaryHead = document.querySelector('#pastureSummaryHead');
+const pastureSummaryRows = document.querySelector('#pastureSummaryRows');
+const pastureDetailStatus = document.querySelector('#pastureDetailStatus');
+const pastureDetailSelect = document.querySelector('#pastureDetailSelect');
+const pastureDetailCards = document.querySelector('#pastureDetailCards');
+const pastureReadiness = document.querySelector('#pastureReadiness');
+const pastureMonthlyChart = document.querySelector('#pastureMonthlyChart');
+const pastureHistoryStatus = document.querySelector('#pastureHistoryStatus');
+const pastureHistoryMonth = document.querySelector('#pastureHistoryMonth');
+const pastureHistoryPastures = document.querySelector('#pastureHistoryPastures');
+const pastureHistoryChart = document.querySelector('#pastureHistoryChart');
+const pastureRankingRows = document.querySelector('#pastureRankingRows');
 const ndviStatus = document.querySelector('#ndviStatus');
 const ndviMean = document.querySelector('#ndviMean');
 const ndviImageDate = document.querySelector('#ndviImageDate');
@@ -22,6 +38,7 @@ const ndviCloud = document.querySelector('#ndviCloud');
 const spreadsheetId = '1mGjbaGPV7p1V5VTQtgFJNnjf8sJSjHle3ejgO9Id2zo';
 const cattleSpreadsheetId = '1YLM7NkiUAaWqOsLpkj9OIkzrqxIqEx7gavmGlgQbeOk';
 const cattleGid = '259459725';
+const pastureSpreadsheetId = '1SbZdtI_dleAFtATCKbKmUnFLxu-Mx3zrzJnRZfQpplA';
 const defaultIrrigationColumns = [5, 10, 15, 20];
 const extendedIrrigationColumns = [5, 10, 15, 20, 25, 30, 35, 40];
 const defaultBioColumns = [
@@ -48,10 +65,24 @@ const pivoSheets = [
 ];
 let ndviMap;
 let ndviLayer;
+const pastureModule = {
+  resumo: [],
+  detalhe: [],
+  historico: [],
+  resumoUpdatedAt: '',
+  detalheUpdatedAt: '',
+  historicoUpdatedAt: '',
+};
 
 refreshButton.addEventListener('click', loadSheet);
 tabButtons.forEach((button) => button.addEventListener('click', () => activateTab(button.dataset.tab)));
 sectionButtons.forEach((button) => button.addEventListener('click', () => activateSection(button.dataset.section)));
+pastureSummarySort.addEventListener('change', renderPastureSummary);
+pastureSummaryStatusFilter.addEventListener('change', renderPastureSummary);
+pastureSummaryRegionFilter.addEventListener('change', renderPastureSummary);
+pastureDetailSelect.addEventListener('change', () => renderPastureDetail(pastureDetailSelect.value));
+pastureHistoryMonth.addEventListener('change', renderPastureHistory);
+pastureHistoryPastures.addEventListener('change', renderPastureHistory);
 loadSheet();
 
 async function loadSheet() {
@@ -65,13 +96,26 @@ async function loadSheet() {
   pastosStatus.textContent = 'Carregando...';
   pastosHead.innerHTML = '<tr><th>Pastos Atuais</th></tr>';
   pastosRows.innerHTML = '<tr><td class="loading-cell">Carregando...</td></tr>';
+  pastureSummaryStatus.textContent = 'Carregando...';
+  pastureSummaryHead.innerHTML = '<tr><th>Pastos</th></tr>';
+  pastureSummaryRows.innerHTML = '<tr><td class="loading-cell">Carregando...</td></tr>';
+  pastureDetailStatus.textContent = 'Carregando...';
+  pastureDetailSelect.innerHTML = '<option value="">Carregando...</option>';
+  pastureDetailCards.innerHTML = '<div class="loading-cell">Carregando...</div>';
+  pastureReadiness.textContent = 'Aguardando dados';
+  pastureMonthlyChart.innerHTML = '';
+  pastureHistoryStatus.textContent = 'Carregando...';
+  pastureHistoryMonth.innerHTML = '<option value="">Carregando...</option>';
+  pastureHistoryPastures.innerHTML = '';
+  pastureHistoryChart.innerHTML = '';
+  pastureRankingRows.innerHTML = '<tr><td colspan="3" class="loading-cell">Carregando...</td></tr>';
   ndviStatus.textContent = 'Carregando...';
   ndviMean.textContent = '--';
   ndviImageDate.textContent = '--';
   ndviUpdatedAt.textContent = '--';
   ndviCloud.textContent = '--';
 
-  await Promise.allSettled([loadIrrigationData(), loadCattleData(), loadNdviData()]);
+  await Promise.allSettled([loadIrrigationData(), loadCattleData(), loadPastureModuleData(), loadNdviData()]);
   refreshButton.disabled = false;
   refreshButton.textContent = 'Atualizar';
 }
@@ -110,6 +154,35 @@ async function loadCattleData() {
   } catch (error) {
     pastosStatus.textContent = 'Erro ao carregar';
     pastosRows.innerHTML = `<tr><td class="loading-cell">${error.message}</td></tr>`;
+  }
+}
+
+async function loadPastureModuleData() {
+  try {
+    const [resumo, detalhe, historico] = await Promise.all([
+      loadPastureModuleSheet('SITE_RESUMO'),
+      loadPastureModuleSheet('SITE_DETALHE'),
+      loadPastureModuleSheet('SITE_HISTORICO'),
+    ]);
+
+    pastureModule.resumo = resumo.rows.map(normalizePastureModuleRow);
+    pastureModule.detalhe = detalhe.rows.map(normalizePastureModuleRow);
+    pastureModule.historico = historico.rows.map(normalizePastureModuleRow);
+    pastureModule.resumoUpdatedAt = resumo.updatedAt;
+    pastureModule.detalheUpdatedAt = detalhe.updatedAt;
+    pastureModule.historicoUpdatedAt = historico.updatedAt;
+
+    renderPastureSummary();
+    renderPastureDetailOptions();
+    renderPastureHistoryOptions();
+  } catch (error) {
+    pastureSummaryStatus.textContent = 'Erro ao carregar';
+    pastureSummaryRows.innerHTML = `<tr><td class="loading-cell">${error.message}</td></tr>`;
+    pastureDetailStatus.textContent = 'Erro ao carregar';
+    pastureDetailCards.innerHTML = `<div class="loading-cell">${error.message}</div>`;
+    pastureReadiness.textContent = 'Erro ao carregar';
+    pastureHistoryStatus.textContent = 'Erro ao carregar';
+    pastureRankingRows.innerHTML = `<tr><td colspan="3" class="loading-cell">${error.message}</td></tr>`;
   }
 }
 
@@ -255,6 +328,396 @@ function tableFromGoogle(table) {
       }),
     ),
   };
+}
+
+async function loadPastureModuleSheet(sheetName) {
+  const table = await loadGoogleSheetTable({
+    spreadsheetId: pastureSpreadsheetId,
+    sheetName,
+    label: sheetName,
+  });
+  const rows = table.displayRows.filter((row) => row.some((cell) => String(cell || '').trim()));
+  const updatedAt = rows[0]?.[1] || '';
+  const dataRows = rows.slice(1).map((row) =>
+    Object.fromEntries(table.columns.map((column, index) => [column, String(row[index] ?? '').trim()])),
+  );
+
+  return {
+    updatedAt,
+    rows: dataRows.filter((row) => row.pasto),
+  };
+}
+
+function normalizePastureModuleRow(row) {
+  return {
+    ...row,
+    pasto: row.pasto || '',
+    area: parseNumber(row.area),
+    lotes: row.lotes || '',
+    uaTotal: parseNumber(row.uaTotal),
+    uaHaAtual: parseNumber(row.uaHaAtual),
+    mediaUaHaMesAtual: parseNumber(row.mediaUaHaMesAtual),
+    mediaUaHaAno: parseNumber(row.mediaUaHaAno),
+    diasOcupadoAno: parseNullableNumber(row.diasOcupadoAno),
+    ultimoUso: row.ultimoUso || '',
+    duracaoUltimoUso: parseNullableNumber(row.duracaoUltimoUso),
+    uaConsumidaUltimoUso: parseNullableNumber(row.uaConsumidaUltimoUso),
+    diasDescansoAtual: parseNullableNumber(row.diasDescansoAtual),
+    diasNoPastoAtual: parseNullableNumber(row.diasNoPastoAtual),
+    intervaloDescansoMedio: parseNullableNumber(row.intervaloDescansoMedio),
+    intervaloOcupacaoMedio: parseNullableNumber(row.intervaloOcupacaoMedio),
+    maiorUaHaHistorico: parseNumber(row.maiorUaHaHistorico),
+    status: String(row.status || '').trim().toLowerCase(),
+    cor: sanitizeHexColor(row.cor),
+    regiao: getPastureRegion(row.pasto),
+  };
+}
+
+function renderPastureSummary() {
+  const statusFilter = pastureSummaryStatusFilter.value;
+  const regionFilter = pastureSummaryRegionFilter.value;
+  const sortKey = pastureSummarySort.value;
+  const rows = pastureModule.resumo
+    .filter((row) => statusFilter === 'todos' || row.status === statusFilter)
+    .filter((row) => regionFilter === 'todos' || row.regiao === regionFilter)
+    .sort((a, b) => comparePastureModuleRows(a, b, sortKey));
+
+  pastureSummaryStatus.textContent = `${rows.length} pasto(s) • Atualizado em: ${formatSheetTimestamp(
+    pastureModule.resumoUpdatedAt,
+  )}`;
+  pastureSummaryHead.innerHTML = `
+    <tr>
+      <th>Pasto</th>
+      <th>Região</th>
+      <th>Lotes</th>
+      <th>Área</th>
+      <th>UA total</th>
+      <th>UA/ha atual</th>
+      <th>Média mês</th>
+      <th>Média ano</th>
+      <th>Dias ocupado</th>
+      <th>Último uso</th>
+      <th>Descanso</th>
+      <th>Status</th>
+    </tr>
+  `;
+  pastureSummaryRows.innerHTML = rows.length
+    ? rows
+        .map(
+          (row) => `
+            <tr class="pasture-module-row" style="--pasture-color: ${row.cor}">
+              <td><strong>${escapeHtml(row.pasto)}</strong></td>
+              <td>${formatPastureRegion(row.regiao)}</td>
+              <td>${renderPastureModuleLotBadges(row.lotes)}</td>
+              <td>${formatNumber(row.area)} ha</td>
+              <td>${formatNumber(row.uaTotal)}</td>
+              <td><strong>${formatNumber(row.uaHaAtual)}</strong></td>
+              <td>${formatNumber(row.mediaUaHaMesAtual)}</td>
+              <td>${formatNumber(row.mediaUaHaAno)}</td>
+              <td>${formatNullable(row.diasOcupadoAno)}</td>
+              <td>${escapeHtml(row.ultimoUso || '--')}</td>
+              <td>${formatNullable(row.diasDescansoAtual)}</td>
+              <td>${renderPastureModuleStatus(row)}</td>
+            </tr>
+          `,
+        )
+        .join('')
+    : '<tr><td colspan="12" class="loading-cell">Nenhum pasto encontrado para os filtros.</td></tr>';
+}
+
+function renderPastureDetailOptions() {
+  const selected = pastureDetailSelect.value || pastureModule.detalhe[0]?.pasto || '';
+
+  pastureDetailSelect.innerHTML = pastureModule.detalhe.length
+    ? pastureModule.detalhe
+        .map((row) => `<option value="${escapeHtml(row.pasto)}">${escapeHtml(row.pasto)}</option>`)
+        .join('')
+    : '<option value="">Sem dados</option>';
+  pastureDetailSelect.value = selected;
+  renderPastureDetail(pastureDetailSelect.value);
+}
+
+function renderPastureDetail(pasto) {
+  const row = pastureModule.detalhe.find((entry) => entry.pasto === pasto) || pastureModule.detalhe[0];
+
+  if (!row) {
+    pastureDetailStatus.textContent = 'Sem dados';
+    pastureDetailCards.innerHTML = '<div class="loading-cell">Nenhum pasto encontrado.</div>';
+    pastureReadiness.textContent = 'Sem dados';
+    pastureMonthlyChart.innerHTML = '';
+    return;
+  }
+
+  pastureDetailStatus.textContent = `Atualizado em: ${formatSheetTimestamp(pastureModule.detalheUpdatedAt)}`;
+  pastureDetailCards.innerHTML = `
+    <article class="pasture-info-card">
+      <span>UA/ha atual</span>
+      <strong>${formatNumber(row.uaHaAtual)}</strong>
+    </article>
+    <article class="pasture-info-card">
+      <span>Dias descanso</span>
+      <strong>${formatNullable(row.diasDescansoAtual)}</strong>
+    </article>
+    <article class="pasture-info-card">
+      <span>Duração último uso</span>
+      <strong>${formatNullable(row.duracaoUltimoUso)} dias</strong>
+    </article>
+    <article class="pasture-info-card">
+      <span>MS último uso</span>
+      <strong>${formatNullable(row.uaConsumidaUltimoUso)} kg</strong>
+    </article>
+    <article class="pasture-info-card pasture-info-card-wide">
+      <span>Lotes</span>
+      <div>${renderPastureModuleLotBadges(row.lotes)}</div>
+    </article>
+  `;
+  pastureReadiness.innerHTML = renderPastureReadiness(row);
+  renderPastureMonthlyBars(row);
+}
+
+function renderPastureHistoryOptions() {
+  const months = uniqueSortedMonths(pastureModule.historico.map((row) => row.mes).filter(Boolean));
+  const pastures = [...new Set(pastureModule.historico.map((row) => row.pasto).filter(Boolean))].sort();
+
+  pastureHistoryMonth.innerHTML = months.length
+    ? months
+        .map(
+          (month, index) =>
+            `<option value="${escapeHtml(month)}" ${index === months.length - 1 ? 'selected' : ''}>${escapeHtml(
+              month,
+            )}</option>`,
+        )
+        .join('')
+    : '<option value="">Sem dados</option>';
+  pastureHistoryPastures.innerHTML = pastures
+    .map((pasto, index) => `<option value="${escapeHtml(pasto)}" ${index < 3 ? 'selected' : ''}>${escapeHtml(pasto)}</option>`)
+    .join('');
+  renderPastureHistory();
+}
+
+function renderPastureHistory() {
+  const selectedMonth = pastureHistoryMonth.value;
+  const selectedPastures = Array.from(pastureHistoryPastures.selectedOptions)
+    .slice(0, 3)
+    .map((option) => option.value);
+  const ranking = pastureModule.historico
+    .filter((row) => row.mes === selectedMonth)
+    .sort((a, b) => parseNumber(b.mediaUaHa) - parseNumber(a.mediaUaHa));
+
+  pastureHistoryStatus.textContent = `Atualizado em: ${formatSheetTimestamp(pastureModule.historicoUpdatedAt)}`;
+  pastureRankingRows.innerHTML = ranking.length
+    ? ranking
+        .map(
+          (row) => `
+            <tr>
+              <td><strong>${escapeHtml(row.pasto)}</strong></td>
+              <td>${formatNumber(parseNumber(row.mediaUaHa))}</td>
+              <td>${formatNullable(parseNullableNumber(row.diasOcupado))}</td>
+            </tr>
+          `,
+        )
+        .join('')
+    : '<tr><td colspan="3" class="loading-cell">Nenhum histórico para este mês.</td></tr>';
+
+  renderPastureHistoryChart(selectedPastures);
+}
+
+function comparePastureModuleRows(a, b, sortKey) {
+  if (sortKey === 'ultimoUso') {
+    const dateA = parseDate(a.ultimoUso)?.getTime() || Number.MAX_SAFE_INTEGER;
+    const dateB = parseDate(b.ultimoUso)?.getTime() || Number.MAX_SAFE_INTEGER;
+    return dateA - dateB;
+  }
+
+  if (sortKey === 'area') return a.area - b.area;
+
+  return parseNumber(b[sortKey]) - parseNumber(a[sortKey]);
+}
+
+function renderPastureModuleLotBadges(value) {
+  const lots = String(value || '')
+    .split('|')
+    .map((lot) => lot.trim())
+    .filter(Boolean);
+
+  if (!lots.length) return '<span class="muted-text">Desocupado</span>';
+
+  return `
+    <div class="tag-list">
+      ${lots.map((lot) => `<span class="pasture-lot-badge">${escapeHtml(lot)}</span>`).join('')}
+    </div>
+  `;
+}
+
+function renderPastureModuleStatus(row) {
+  const label = row.status ? row.status.replace('_', ' ') : '--';
+  return `
+    <span class="pasture-module-status">
+      <i style="background-color: ${row.cor}"></i>
+      ${escapeHtml(label)}
+    </span>
+  `;
+}
+
+function renderPastureReadiness(row) {
+  if (row.status === 'ocupado') {
+    return `<strong>Ocupado agora</strong><span>${renderPastureModuleLotBadges(row.lotes)}</span>`;
+  }
+
+  if (row.diasDescansoAtual === null || row.intervaloDescansoMedio === null) {
+    return '<strong>Sem histórico suficiente</strong><span>Não há dados de descanso médio para comparação.</span>';
+  }
+
+  if (row.diasDescansoAtual >= row.intervaloDescansoMedio) {
+    return `<strong>Pronto para uso</strong><span>${formatNumber(row.diasDescansoAtual)} dias de descanso atual.</span>`;
+  }
+
+  const remaining = Math.ceil(row.intervaloDescansoMedio - row.diasDescansoAtual);
+  return `<strong>Em descanso</strong><span>${remaining} dia${remaining === 1 ? '' : 's'} restante${
+    remaining === 1 ? '' : 's'
+  }.</span>`;
+}
+
+function renderPastureMonthlyBars(row) {
+  const monthEntries = Object.entries(row)
+    .filter(([key]) => /^media[A-Za-z]{3}\d{4}$/.test(key))
+    .map(([key, value]) => ({
+      label: key.replace(/^media/, '').replace(/\d{4}$/, ''),
+      value: parseNumber(value),
+    }));
+  const max = Math.max(1, ...monthEntries.map((entry) => entry.value));
+
+  pastureMonthlyChart.innerHTML = monthEntries.length
+    ? monthEntries
+        .map(
+          (entry) => `
+            <div class="pasture-bar-item">
+              <span>${escapeHtml(entry.label)}</span>
+              <div class="pasture-bar-track">
+                <i style="height: ${Math.max(3, (entry.value / max) * 100)}%"></i>
+              </div>
+              <strong>${formatNumber(entry.value)}</strong>
+            </div>
+          `,
+        )
+        .join('')
+    : '<div class="loading-cell">Sem médias mensais.</div>';
+}
+
+function renderPastureHistoryChart(selectedPastures) {
+  const months = uniqueSortedMonths(pastureModule.historico.map((row) => row.mes).filter(Boolean));
+  const width = 720;
+  const height = 260;
+  const padding = 34;
+  const colors = ['#1d6f63', '#2368b5', '#946400'];
+  const max = Math.max(
+    1,
+    ...pastureModule.historico
+      .filter((row) => selectedPastures.includes(row.pasto))
+      .map((row) => parseNumber(row.mediaUaHa)),
+  );
+  const xStep = months.length > 1 ? (width - padding * 2) / (months.length - 1) : 0;
+
+  if (!selectedPastures.length || !months.length) {
+    pastureHistoryChart.innerHTML = '<div class="loading-cell">Selecione até 3 pastos para comparar.</div>';
+    return;
+  }
+
+  const series = selectedPastures.map((pasto, index) => {
+    const rowsByMonth = new Map(
+      pastureModule.historico
+        .filter((row) => row.pasto === pasto)
+        .map((row) => [row.mes, parseNumber(row.mediaUaHa)]),
+    );
+    const points = months.map((month, monthIndex) => {
+      const value = rowsByMonth.get(month) || 0;
+      const x = padding + monthIndex * xStep;
+      const y = height - padding - (value / max) * (height - padding * 2);
+      return { month, value, x, y };
+    });
+
+    return {
+      pasto,
+      color: colors[index],
+      points,
+      polyline: points.map((point) => `${point.x},${point.y}`).join(' '),
+    };
+  });
+
+  pastureHistoryChart.innerHTML = `
+    <div class="pasture-history-legend">
+      ${series
+        .map((entry) => `<span><i style="background: ${entry.color}"></i>${escapeHtml(entry.pasto)}</span>`)
+        .join('')}
+    </div>
+    <svg class="pasture-history-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Gráfico de linha de UA/ha por mês">
+      <line x1="${padding}" y1="${height - padding}" x2="${width - padding}" y2="${height - padding}" />
+      <line x1="${padding}" y1="${padding}" x2="${padding}" y2="${height - padding}" />
+      ${months
+        .map((month, index) => {
+          const x = padding + index * xStep;
+          return `<text x="${x}" y="${height - 8}" text-anchor="middle">${escapeHtml(month.slice(0, 2))}</text>`;
+        })
+        .join('')}
+      ${series
+        .map(
+          (entry) => `
+            <polyline points="${entry.polyline}" fill="none" stroke="${entry.color}" stroke-width="3" />
+            ${entry.points
+              .map(
+                (point) => `
+                  <circle cx="${point.x}" cy="${point.y}" r="4" fill="${entry.color}">
+                    <title>${escapeHtml(entry.pasto)} • ${escapeHtml(point.month)} • ${formatNumber(point.value)}</title>
+                  </circle>
+                `,
+              )
+              .join('')}
+          `,
+        )
+        .join('')}
+    </svg>
+  `;
+}
+
+function getPastureRegion(pasto) {
+  const value = String(pasto || '').trim().toUpperCase();
+  if (!value) return '';
+  if (value.startsWith('V/R') || value.startsWith('VR')) return 'RESERVA';
+  if (['A', 'B', 'C', 'P'].includes(value[0])) return value[0];
+  return 'RESERVA';
+}
+
+function formatPastureRegion(region) {
+  if (region === 'RESERVA') return 'Reserva';
+  return region ? `Região ${region}` : '--';
+}
+
+function uniqueSortedMonths(months) {
+  return [...new Set(months)].sort((a, b) => parseMonthYear(a) - parseMonthYear(b));
+}
+
+function parseMonthYear(value) {
+  const match = String(value || '').match(/^(\d{1,2})\/(\d{4})$/);
+  if (!match) return 0;
+  return Number(match[2]) * 100 + Number(match[1]);
+}
+
+function parseNullableNumber(value) {
+  if (value === null || value === undefined || String(value).trim() === '') return null;
+  return parseNumber(value);
+}
+
+function formatNullable(value) {
+  return value === null || value === undefined || value === '' ? '--' : formatNumber(Number(value));
+}
+
+function formatSheetTimestamp(value) {
+  return value || '--';
+}
+
+function sanitizeHexColor(value) {
+  const color = String(value || '').trim();
+  return /^#[0-9a-f]{6}$/i.test(color) ? color : '#eef2f5';
 }
 
 function renderStatusTable(filledDates) {
