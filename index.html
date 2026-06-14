@@ -109,8 +109,6 @@
         <nav class="tabs" aria-label="Abas de gado">
           <button class="tab-button active" type="button" data-tab="pastosAtuaisPanel">Pastos Atuais</button>
           <button class="tab-button" type="button" data-tab="pastureSummaryPanel">Resumo de Pastos</button>
-          <button class="tab-button" type="button" data-tab="pastureDetailPanel">Detalhe</button>
-          <button class="tab-button" type="button" data-tab="pastureHistoryPanel">Histórico</button>
         </nav>
 
         <section id="pastosAtuaisPanel" class="table-panel tab-panel active">
@@ -143,13 +141,9 @@
 
           <div class="pasture-controls" aria-label="Filtros do resumo de pastos">
             <label>
-              Ordenar
+              Coluna mãe
               <select id="pastureSummarySort">
                 <option value="uaHaAtual" selected>UA/ha atual</option>
-                <option value="mediaUaHaAno">Média UA/ha ano</option>
-                <option value="diasOcupadoAno">Dias ocupado ano</option>
-                <option value="ultimoUso">Último uso</option>
-                <option value="area">Área</option>
               </select>
             </label>
             <label>
@@ -187,77 +181,6 @@
                 </tr>
               </tbody>
             </table>
-          </div>
-        </section>
-
-        <section id="pastureDetailPanel" class="table-panel tab-panel">
-          <div class="table-header">
-            <h2>Detalhe do Pasto</h2>
-            <span id="pastureDetailStatus">Aguardando dados</span>
-          </div>
-
-          <div class="pasture-detail-layout">
-            <label class="pasture-select-label">
-              Pasto
-              <select id="pastureDetailSelect">
-                <option value="">Carregando...</option>
-              </select>
-            </label>
-
-            <div id="pastureDetailCards" class="pasture-card-grid">
-              <div class="loading-cell">Carregando...</div>
-            </div>
-
-            <div id="pastureReadiness" class="pasture-readiness">Aguardando dados</div>
-
-            <section class="pasture-chart-panel" aria-label="Médias mensais">
-              <h3>Médias mensais UA/ha</h3>
-              <div id="pastureMonthlyChart" class="pasture-bar-chart"></div>
-            </section>
-          </div>
-        </section>
-
-        <section id="pastureHistoryPanel" class="table-panel tab-panel">
-          <div class="table-header">
-            <h2>Histórico de Pastos</h2>
-            <span id="pastureHistoryStatus">Aguardando dados</span>
-          </div>
-
-          <div class="pasture-controls" aria-label="Filtros do histórico de pastos">
-            <label>
-              Mês
-              <select id="pastureHistoryMonth">
-                <option value="">Carregando...</option>
-              </select>
-            </label>
-            <label>
-              Comparar pastos
-              <select id="pastureHistoryPastures" multiple size="3"></select>
-            </label>
-          </div>
-
-          <div class="pasture-history-layout">
-            <section class="pasture-chart-panel" aria-label="Comparação histórica">
-              <h3>Comparação mensal</h3>
-              <div id="pastureHistoryChart" class="pasture-line-chart"></div>
-            </section>
-
-            <div class="table-wrap pasture-ranking-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Pasto</th>
-                    <th>Média UA/ha</th>
-                    <th>Dias ocupado</th>
-                  </tr>
-                </thead>
-                <tbody id="pastureRankingRows">
-                  <tr>
-                    <td colspan="3" class="loading-cell">Carregando...</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
           </div>
         </section>
       </section>
@@ -302,6 +225,6 @@
     </main>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="app.js?v=2026-06-14-pastos-csv"></script>
+    <script src="app.js?v=2026-06-14-site-resumo"></script>
   </body>
 </html>
