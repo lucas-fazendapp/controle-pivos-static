@@ -15,8 +15,6 @@ const pastosHead = document.querySelector('#pastosHead');
 const pastosRows = document.querySelector('#pastosRows');
 const pastureSummaryStatus = document.querySelector('#pastureSummaryStatus');
 const pastureSummarySort = document.querySelector('#pastureSummarySort');
-const pastureSummaryStatusFilter = document.querySelector('#pastureSummaryStatusFilter');
-const pastureSummaryRegionFilter = document.querySelector('#pastureSummaryRegionFilter');
 const pastureSummaryHead = document.querySelector('#pastureSummaryHead');
 const pastureSummaryRows = document.querySelector('#pastureSummaryRows');
 const ndviStatus = document.querySelector('#ndviStatus');
@@ -65,8 +63,6 @@ refreshButton.addEventListener('click', loadSheet);
 tabButtons.forEach((button) => button.addEventListener('click', () => activateTab(button.dataset.tab)));
 sectionButtons.forEach((button) => button.addEventListener('click', () => activateSection(button.dataset.section)));
 pastureSummarySort.addEventListener('change', renderPastureSummary);
-pastureSummaryStatusFilter.addEventListener('change', renderPastureSummary);
-pastureSummaryRegionFilter.addEventListener('change', renderPastureSummary);
 loadSheet();
 
 async function loadSheet() {
@@ -344,7 +340,9 @@ function normalizePastureModuleRow(row) {
 }
 
 function renderPastureSummaryOptions() {
-  const selectableColumns = pastureModule.summaryColumns.filter((column) => column && column !== 'cor');
+  const selectableColumns = pastureModule.summaryColumns.filter(
+    (column) => column && !['cor', 'diasOcupadoAno'].includes(column),
+  );
 
   const selected = selectableColumns.includes(pastureSummarySort.value)
     ? pastureSummarySort.value
@@ -359,15 +357,12 @@ function renderPastureSummaryOptions() {
 }
 
 function renderPastureSummary() {
-  const statusFilter = pastureSummaryStatusFilter.value;
-  const regionFilter = pastureSummaryRegionFilter.value;
   const sortKey = pastureSummarySort.value;
   const selectedColumn = sortKey || 'uaHaAtual';
-  const otherColumns = pastureModule.summaryColumns.filter((column) => column && column !== selectedColumn);
-  const rows = pastureModule.resumo
-    .filter((row) => statusFilter === 'todos' || row.status === statusFilter)
-    .filter((row) => regionFilter === 'todos' || row.regiao === regionFilter)
-    .sort((a, b) => comparePastureModuleRows(a, b, sortKey));
+  const otherColumns = pastureModule.summaryColumns.filter(
+    (column) => column && !['cor', 'diasOcupadoAno', selectedColumn].includes(column),
+  );
+  const rows = pastureModule.resumo.sort((a, b) => comparePastureModuleRows(a, b, sortKey));
 
   pastureSummaryStatus.textContent = `${rows.length} pasto(s) • Atualizado em: ${formatSheetTimestamp(
     pastureModule.resumoUpdatedAt,
@@ -415,7 +410,6 @@ function renderPastureSummaryCell(row, column, isMother = false) {
   if (column === 'pasto') return `<strong>${escapeHtml(row.pasto || '--')}</strong>`;
   if (column === 'lotes') return renderPastureModuleLotBadges(row.lotes);
   if (column === 'status') return renderPastureModuleStatus(row);
-  if (column === 'cor') return `<span class="pasture-color-swatch" style="background-color: ${row.cor}"></span>`;
   if (column === 'ultimoUso') return escapeHtml(row.ultimoUso || '--');
   if (column === 'area') return `${formatNumber(row.area)} ha`;
 
@@ -434,7 +428,6 @@ function formatPastureColumnLabel(column) {
     uaHaAtual: 'UA/ha atual',
     mediaUaHaMesAtual: 'Média UA/ha mês',
     mediaUaHaAno: 'Média UA/ha ano',
-    diasOcupadoAno: 'Dias ocupado ano',
     ultimoUso: 'Último uso',
     duracaoUltimoUso: 'Duração último uso',
     uaConsumidaUltimoUso: 'MS último uso',
@@ -452,7 +445,7 @@ function renderPastureModuleLotBadges(value) {
     .map((lot) => lot.trim())
     .filter(Boolean);
 
-  if (!lots.length) return '<span class="muted-text">Desocupado</span>';
+  if (!lots.length) return '<span class="pasture-empty-badge">Desocupado</span>';
 
   return `
     <div class="tag-list">
