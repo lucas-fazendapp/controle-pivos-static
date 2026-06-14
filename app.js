@@ -330,17 +330,73 @@ function tableFromGoogle(table) {
   };
 }
 
+function parseCsv(csv) {
+  const rows = [];
+  let row = [];
+  let cell = '';
+  let insideQuotes = false;
+
+  for (let index = 0; index < csv.length; index += 1) {
+    const char = csv[index];
+    const nextChar = csv[index + 1];
+
+    if (char === '"') {
+      if (insideQuotes && nextChar === '"') {
+        cell += '"';
+        index += 1;
+      } else {
+        insideQuotes = !insideQuotes;
+      }
+      continue;
+    }
+
+    if (char === ',' && !insideQuotes) {
+      row.push(cell);
+      cell = '';
+      continue;
+    }
+
+    if ((char === '\n' || char === '\r') && !insideQuotes) {
+      if (char === '\r' && nextChar === '\n') index += 1;
+      row.push(cell);
+      rows.push(row);
+      row = [];
+      cell = '';
+      continue;
+    }
+
+    cell += char;
+  }
+
+  if (cell || row.length) {
+    row.push(cell);
+    rows.push(row);
+  }
+
+  return rows;
+}
+
 async function loadPastureModuleSheet(sheetName) {
-  const table = await loadGoogleSheetTable({
-    spreadsheetId: pastureSpreadsheetId,
-    sheetName,
-    label: sheetName,
-  });
-  const rows = table.displayRows.filter((row) => row.some((cell) => String(cell || '').trim()));
-  const updatedAt = rows[0]?.[1] || '';
-  const dataRows = rows.slice(1).map((row) =>
-    Object.fromEntries(table.columns.map((column, index) => [column, String(row[index] ?? '').trim()])),
+  const url =
+    `https://docs.google.com/spreadsheets/d/${pastureSpreadsheetId}/gviz/tq` +
+    `?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+  const response = await fetch(url, { cache: 'no-store' });
+
+  if (!response.ok) {
+    throw new Error(`${sheetName}: erro ${response.status} ao acessar o Google Sheets`);
+  }
+
+  const csv = await response.text();
+  const parsedRows = parseCsv(csv).filter((row) => row.some((cell) => String(cell || '').trim()));
+  const headers = (parsedRows[0] || []).map((header) => String(header || '').trim());
+  const updatedAt = parsedRows[1]?.[1] || '';
+  const dataRows = parsedRows.slice(2).map((row) =>
+    Object.fromEntries(headers.map((header, index) => [header, String(row[index] ?? '').trim()])),
   );
+
+  if (!headers.includes('pasto')) {
+    throw new Error(`${sheetName}: não encontrei a coluna pasto. Verifique se a aba está publicada para leitura.`);
+  }
 
   return {
     updatedAt,
