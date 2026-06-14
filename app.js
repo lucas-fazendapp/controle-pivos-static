@@ -28,7 +28,7 @@ const ndviCloud = document.querySelector('#ndviCloud');
 const spreadsheetId = '1mGjbaGPV7p1V5VTQtgFJNnjf8sJSjHle3ejgO9Id2zo';
 const cattleSpreadsheetId = '1YLM7NkiUAaWqOsLpkj9OIkzrqxIqEx7gavmGlgQbeOk';
 const cattleGid = '259459725';
-const pastureSpreadsheetId = '1SbZdtI_dleAFtATCKbKmUnFLxu-Mx3zrzJnRZfQpplA';
+const pastureSummaryGid = '916804732';
 const defaultIrrigationColumns = [5, 10, 15, 20];
 const extendedIrrigationColumns = [5, 10, 15, 20, 25, 30, 35, 40];
 const defaultBioColumns = [
@@ -292,25 +292,14 @@ function tableFromGoogle(table) {
 }
 
 async function loadFirstAvailablePastureSummarySheet() {
-  const sheetNames = ['Site Resumo', 'SITE_RESUMO', 'SITE RESUMO'];
-  const errors = [];
-
-  for (const sheetName of sheetNames) {
-    try {
-      return await loadPastureModuleSheet(sheetName);
-    } catch (error) {
-      errors.push(error.message);
-    }
-  }
-
-  throw new Error(`Não consegui ler a aba Site Resumo. ${errors.join(' | ')}`);
+  return loadPastureModuleSheet();
 }
 
-async function loadPastureModuleSheet(sheetName) {
+async function loadPastureModuleSheet() {
   const table = await loadGoogleSheetTable({
-    spreadsheetId: pastureSpreadsheetId,
-    sheetName,
-    label: sheetName,
+    spreadsheetId: cattleSpreadsheetId,
+    gid: pastureSummaryGid,
+    label: 'Site resumo',
   });
   const rows = table.displayRows.filter((row) => row.some((cell) => String(cell || '').trim()));
   const updatedAt = rows[0]?.[1] || '';
@@ -319,7 +308,7 @@ async function loadPastureModuleSheet(sheetName) {
   );
 
   if (!table.columns.includes('pasto')) {
-    throw new Error(`${sheetName}: não encontrei a coluna pasto`);
+    throw new Error('Site resumo: não encontrei a coluna pasto');
   }
 
   return {
@@ -355,19 +344,15 @@ function normalizePastureModuleRow(row) {
 }
 
 function renderPastureSummaryOptions() {
-  const numericColumns = pastureModule.summaryColumns.filter(
-    (column) =>
-      !['pasto', 'lotes', 'status', 'cor', 'ultimoUso'].includes(column) &&
-      pastureModule.resumo.some((row) => parseNullableNumber(row[column]) !== null),
-  );
+  const selectableColumns = pastureModule.summaryColumns.filter((column) => column && column !== 'cor');
 
-  const selected = numericColumns.includes(pastureSummarySort.value)
+  const selected = selectableColumns.includes(pastureSummarySort.value)
     ? pastureSummarySort.value
-    : numericColumns.includes('uaHaAtual')
+    : selectableColumns.includes('uaHaAtual')
       ? 'uaHaAtual'
-      : numericColumns[0] || 'uaHaAtual';
+      : selectableColumns[0] || 'pasto';
 
-  pastureSummarySort.innerHTML = numericColumns
+  pastureSummarySort.innerHTML = selectableColumns
     .map((column) => `<option value="${escapeHtml(column)}">${escapeHtml(formatPastureColumnLabel(column))}</option>`)
     .join('');
   pastureSummarySort.value = selected;
@@ -378,21 +363,7 @@ function renderPastureSummary() {
   const regionFilter = pastureSummaryRegionFilter.value;
   const sortKey = pastureSummarySort.value;
   const selectedColumn = sortKey || 'uaHaAtual';
-  const otherColumns = [
-    'pasto',
-    'lotes',
-    'area',
-    'uaTotal',
-    'uaHaAtual',
-    'mediaUaHaMesAtual',
-    'mediaUaHaAno',
-    'diasOcupadoAno',
-    'ultimoUso',
-    'duracaoUltimoUso',
-    'uaConsumidaUltimoUso',
-    'diasDescansoAtual',
-    'status',
-  ].filter((column) => column !== selectedColumn && pastureModule.summaryColumns.includes(column));
+  const otherColumns = pastureModule.summaryColumns.filter((column) => column && column !== selectedColumn);
   const rows = pastureModule.resumo
     .filter((row) => statusFilter === 'todos' || row.status === statusFilter)
     .filter((row) => regionFilter === 'todos' || row.regiao === regionFilter)
@@ -422,13 +393,22 @@ function renderPastureSummary() {
 }
 
 function comparePastureModuleRows(a, b, sortKey) {
+  if (sortKey === 'pasto') return String(a.pasto || '').localeCompare(String(b.pasto || ''), 'pt-BR');
+
   if (sortKey === 'ultimoUso') {
     const dateA = parseDate(a.ultimoUso)?.getTime() || Number.MAX_SAFE_INTEGER;
     const dateB = parseDate(b.ultimoUso)?.getTime() || Number.MAX_SAFE_INTEGER;
-    return dateA - dateB;
+    return dateB - dateA;
   }
 
-  return parseNumber(b[sortKey]) - parseNumber(a[sortKey]);
+  const numericA = parseNullableNumber(a[sortKey]);
+  const numericB = parseNullableNumber(b[sortKey]);
+
+  if (numericA !== null || numericB !== null) {
+    return (numericB || 0) - (numericA || 0);
+  }
+
+  return String(a[sortKey] || '').localeCompare(String(b[sortKey] || ''), 'pt-BR');
 }
 
 function renderPastureSummaryCell(row, column, isMother = false) {
@@ -440,6 +420,7 @@ function renderPastureSummaryCell(row, column, isMother = false) {
   if (column === 'area') return `${formatNumber(row.area)} ha`;
 
   const value = parseNullableNumber(row[column]);
+  if (value === null) return escapeHtml(row[column] || '--');
   const formatted = formatNullable(value);
   return isMother ? `<strong>${formatted}</strong>` : formatted;
 }
