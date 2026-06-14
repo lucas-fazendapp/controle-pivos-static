@@ -58,6 +58,7 @@ const pastureModule = {
   resumoUpdatedAt: '',
   summaryColumns: [],
 };
+const hiddenPastureSummaryColumns = ['cor', 'diasOcupadoAno', 'duracaoUltimoUso', 'uaConsumidaUltimoUso', 'ultimoUso'];
 
 refreshButton.addEventListener('click', loadSheet);
 tabButtons.forEach((button) => button.addEventListener('click', () => activateTab(button.dataset.tab)));
@@ -341,7 +342,7 @@ function normalizePastureModuleRow(row) {
 
 function renderPastureSummaryOptions() {
   const selectableColumns = pastureModule.summaryColumns.filter(
-    (column) => column && !['cor', 'diasOcupadoAno'].includes(column),
+    (column) => column && !hiddenPastureSummaryColumns.includes(column),
   );
 
   const selected = selectableColumns.includes(pastureSummarySort.value)
@@ -360,7 +361,7 @@ function renderPastureSummary() {
   const sortKey = pastureSummarySort.value;
   const selectedColumn = sortKey || 'uaHaAtual';
   const otherColumns = pastureModule.summaryColumns.filter(
-    (column) => column && !['cor', 'diasOcupadoAno', selectedColumn].includes(column),
+    (column) => column && !hiddenPastureSummaryColumns.includes(column) && column !== selectedColumn,
   );
   const rows = pastureModule.resumo.sort((a, b) => comparePastureModuleRows(a, b, sortKey));
 
@@ -428,9 +429,7 @@ function formatPastureColumnLabel(column) {
     uaHaAtual: 'UA/ha atual',
     mediaUaHaMesAtual: 'Média UA/ha mês',
     mediaUaHaAno: 'Média UA/ha ano',
-    ultimoUso: 'Último uso',
-    duracaoUltimoUso: 'Duração último uso',
-    uaConsumidaUltimoUso: 'MS último uso',
+    msPorHaUltimoUso: 'Ms/Ha Ultimo Uso',
     diasDescansoAtual: 'Dias descanso atual',
     status: 'Status',
     cor: 'Cor',
