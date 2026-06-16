@@ -109,6 +109,7 @@
         <nav class="tabs" aria-label="Abas de gado">
           <button class="tab-button active" type="button" data-tab="pastosAtuaisPanel">Pastos Atuais</button>
           <button class="tab-button" type="button" data-tab="pastureSummaryPanel">Análise Pastos</button>
+          <button class="tab-button" type="button" data-tab="pastureDetailPanel">Pastos Detalhe</button>
         </nav>
 
         <section id="pastosAtuaisPanel" class="table-panel tab-panel active">
@@ -163,6 +164,26 @@
             </table>
           </div>
         </section>
+
+        <section id="pastureDetailPanel" class="table-panel tab-panel">
+          <div class="table-header">
+            <h2>Pastos Detalhe</h2>
+            <span id="pastureDetailStatus">Aguardando dados</span>
+          </div>
+
+          <div class="pasture-controls" aria-label="Seleção do pasto detalhado">
+            <label>
+              Pasto
+              <select id="pastureDetailSelect">
+                <option value="">Carregando...</option>
+              </select>
+            </label>
+          </div>
+
+          <div id="pastureDetailContent" class="pasture-detail-grid">
+            <div class="loading-cell">Carregando...</div>
+          </div>
+        </section>
       </section>
 
       <section id="ndviSection" class="section-panel">
@@ -205,6 +226,6 @@
     </main>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="app.js?v=2026-06-14-analise-pastos-filtros"></script>
+    <script src="app.js?v=2026-06-16-pastos-detalhe"></script>
   </body>
 </html>

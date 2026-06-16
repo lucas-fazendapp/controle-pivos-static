@@ -17,6 +17,9 @@ const pastureSummaryStatus = document.querySelector('#pastureSummaryStatus');
 const pastureSummarySort = document.querySelector('#pastureSummarySort');
 const pastureSummaryHead = document.querySelector('#pastureSummaryHead');
 const pastureSummaryRows = document.querySelector('#pastureSummaryRows');
+const pastureDetailStatus = document.querySelector('#pastureDetailStatus');
+const pastureDetailSelect = document.querySelector('#pastureDetailSelect');
+const pastureDetailContent = document.querySelector('#pastureDetailContent');
 const ndviStatus = document.querySelector('#ndviStatus');
 const ndviMean = document.querySelector('#ndviMean');
 const ndviImageDate = document.querySelector('#ndviImageDate');
@@ -57,6 +60,9 @@ const pastureModule = {
   resumo: [],
   resumoUpdatedAt: '',
   summaryColumns: [],
+  detalhe: [],
+  detalheUpdatedAt: '',
+  detailColumns: [],
 };
 const hiddenPastureSummaryColumns = ['cor', 'diasOcupadoAno', 'duracaoUltimoUso', 'uaConsumidaUltimoUso', 'ultimoUso'];
 
@@ -64,6 +70,7 @@ refreshButton.addEventListener('click', loadSheet);
 tabButtons.forEach((button) => button.addEventListener('click', () => activateTab(button.dataset.tab)));
 sectionButtons.forEach((button) => button.addEventListener('click', () => activateSection(button.dataset.section)));
 pastureSummarySort.addEventListener('change', renderPastureSummary);
+pastureDetailSelect.addEventListener('change', () => renderPastureDetail(pastureDetailSelect.value));
 loadSheet();
 
 async function loadSheet() {
@@ -80,6 +87,9 @@ async function loadSheet() {
   pastureSummaryStatus.textContent = 'Carregando...';
   pastureSummaryHead.innerHTML = '<tr><th>Pastos</th></tr>';
   pastureSummaryRows.innerHTML = '<tr><td class="loading-cell">Carregando...</td></tr>';
+  pastureDetailStatus.textContent = 'Carregando...';
+  pastureDetailSelect.innerHTML = '<option value="">Carregando...</option>';
+  pastureDetailContent.innerHTML = '<div class="loading-cell">Carregando...</div>';
   ndviStatus.textContent = 'Carregando...';
   ndviMean.textContent = '--';
   ndviImageDate.textContent = '--';
@@ -138,6 +148,17 @@ async function loadPastureModuleData() {
 
     renderPastureSummaryOptions();
     renderPastureSummary();
+
+    try {
+      const detalhe = await loadFirstAvailablePastureDetailSheet();
+      pastureModule.detalhe = detalhe.rows;
+      pastureModule.detalheUpdatedAt = detalhe.updatedAt;
+      pastureModule.detailColumns = detalhe.columns;
+      renderPastureDetailOptions();
+    } catch (detailError) {
+      pastureDetailStatus.textContent = 'Erro ao carregar';
+      pastureDetailContent.innerHTML = `<div class="loading-cell">${detailError.message}</div>`;
+    }
   } catch (error) {
     pastureSummaryStatus.textContent = 'Erro ao carregar';
     pastureSummaryRows.innerHTML = `<tr><td class="loading-cell">${error.message}</td></tr>`;
@@ -292,6 +313,21 @@ async function loadFirstAvailablePastureSummarySheet() {
   return loadPastureModuleSheet();
 }
 
+async function loadFirstAvailablePastureDetailSheet() {
+  const sheetNames = ['Site Detalhe', 'SITE_DETALHE', 'Site detalhe', 'SITE DETALHE'];
+  const errors = [];
+
+  for (const sheetName of sheetNames) {
+    try {
+      return await loadPastureDetailSheet(sheetName);
+    } catch (error) {
+      errors.push(error.message);
+    }
+  }
+
+  throw new Error(`Não consegui ler a aba Site Detalhe. ${errors.join(' | ')}`);
+}
+
 async function loadPastureModuleSheet() {
   const table = await loadGoogleSheetTable({
     spreadsheetId: cattleSpreadsheetId,
@@ -306,6 +342,29 @@ async function loadPastureModuleSheet() {
 
   if (!table.columns.includes('pasto')) {
     throw new Error('Site resumo: não encontrei a coluna pasto');
+  }
+
+  return {
+    updatedAt,
+    columns: table.columns,
+    rows: dataRows.filter((row) => row.pasto),
+  };
+}
+
+async function loadPastureDetailSheet(sheetName) {
+  const table = await loadGoogleSheetTable({
+    spreadsheetId: cattleSpreadsheetId,
+    sheetName,
+    label: sheetName,
+  });
+  const rows = table.displayRows.filter((row) => row.some((cell) => String(cell || '').trim()));
+  const updatedAt = rows[0]?.[1] || '';
+  const dataRows = rows.slice(1).map((row) =>
+    Object.fromEntries(table.columns.map((column, index) => [column, String(row[index] ?? '').trim()])),
+  );
+
+  if (!table.columns.includes('pasto')) {
+    throw new Error(`${sheetName}: não encontrei a coluna pasto`);
   }
 
   return {
@@ -386,6 +445,67 @@ function renderPastureSummary() {
         )
         .join('')
     : `<tr><td colspan="${otherColumns.length + 1}" class="loading-cell">Nenhum pasto encontrado para os filtros.</td></tr>`;
+}
+
+function renderPastureDetailOptions() {
+  const rows = [...pastureModule.detalhe].sort((a, b) =>
+    String(a.pasto || '').localeCompare(String(b.pasto || ''), 'pt-BR'),
+  );
+  const selected = pastureDetailSelect.value || rows[0]?.pasto || '';
+
+  pastureDetailSelect.innerHTML = rows.length
+    ? rows.map((row) => `<option value="${escapeHtml(row.pasto)}">${escapeHtml(row.pasto)}</option>`).join('')
+    : '<option value="">Sem dados</option>';
+  pastureDetailSelect.value = selected;
+  renderPastureDetail(selected);
+}
+
+function renderPastureDetail(pasto) {
+  const row = pastureModule.detalhe.find((entry) => entry.pasto === pasto);
+
+  if (!row) {
+    pastureDetailStatus.textContent = 'Sem dados';
+    pastureDetailContent.innerHTML = '<div class="loading-cell">Nenhum pasto encontrado.</div>';
+    return;
+  }
+
+  pastureDetailStatus.textContent = `Atualizado em: ${formatSheetTimestamp(pastureModule.detalheUpdatedAt)}`;
+  pastureDetailContent.innerHTML = `
+    <div class="pasture-detail-title">
+      <strong>${escapeHtml(row.pasto)}</strong>
+      ${renderPastureDetailMiniStatus(row)}
+    </div>
+    <div class="pasture-detail-cards">
+      ${pastureModule.detailColumns
+        .filter((column) => column)
+        .map(
+          (column) => `
+            <article class="pasture-detail-card">
+              <span>${escapeHtml(formatPastureColumnLabel(column))}</span>
+              <strong>${renderPastureDetailValue(row, column)}</strong>
+            </article>
+          `,
+        )
+        .join('')}
+    </div>
+  `;
+}
+
+function renderPastureDetailValue(row, column) {
+  if (column === 'lotes') return renderPastureModuleLotBadges(row.lotes);
+  if (column === 'status') return renderPastureModuleStatus({ ...row, cor: sanitizeHexColor(row.cor) });
+  if (column === 'cor') return `<span class="pasture-color-value"><i style="background-color: ${sanitizeHexColor(row.cor)}"></i>${escapeHtml(row.cor || '--')}</span>`;
+
+  const value = row[column];
+  const numericValue = parseNullableNumber(value);
+  if (numericValue !== null && column !== 'pasto') return formatNumber(numericValue);
+
+  return escapeHtml(value || '--');
+}
+
+function renderPastureDetailMiniStatus(row) {
+  if (!row.status) return '';
+  return renderPastureModuleStatus({ ...row, status: String(row.status).trim().toLowerCase(), cor: sanitizeHexColor(row.cor) });
 }
 
 function comparePastureModuleRows(a, b, sortKey) {
