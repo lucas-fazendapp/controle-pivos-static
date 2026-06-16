@@ -470,42 +470,63 @@ function renderPastureDetail(pasto) {
   }
 
   pastureDetailStatus.textContent = `Atualizado em: ${formatSheetTimestamp(pastureModule.detalheUpdatedAt)}`;
+  const basicColumns = ['pasto', 'area', 'lotes', 'uaTotal', 'uaHaAtual'];
+  const lastUseColumns = ['msPorHaUltimoUso', 'ultimoUso', 'duracaoUltimoUso'];
+  const monthlyColumns = pastureModule.detailColumns.filter((column) => /^media[A-Za-z]{3}\d{4}$/.test(column));
+  const hiddenColumns = new Set([
+    ...basicColumns,
+    ...lastUseColumns,
+    ...monthlyColumns,
+    'maiorUaHaHistorico',
+    'intervaloOcupacaoMedio',
+    'uaConsumidaUltimoUso',
+    'cor',
+    'status',
+  ]);
+  const remainingColumns = pastureModule.detailColumns.filter((column) => column && !hiddenColumns.has(column));
+
   pastureDetailContent.innerHTML = `
     <div class="pasture-detail-title">
       <strong>${escapeHtml(row.pasto)}</strong>
-      ${renderPastureDetailMiniStatus(row)}
     </div>
-    <div class="pasture-detail-cards">
-      ${pastureModule.detailColumns
-        .filter((column) => column)
-        .map(
-          (column) => `
-            <article class="pasture-detail-card">
-              <span>${escapeHtml(formatPastureColumnLabel(column))}</span>
-              <strong>${renderPastureDetailValue(row, column)}</strong>
-            </article>
-          `,
-        )
-        .join('')}
-    </div>
+    ${renderPastureDetailSection('Pasto', row, basicColumns)}
+    ${renderPastureDetailSection('Último uso', row, lastUseColumns)}
+    ${renderPastureDetailSection('Médias histórico', row, monthlyColumns)}
+    ${remainingColumns.length ? renderPastureDetailSection('Outros dados', row, remainingColumns) : ''}
+  `;
+}
+
+function renderPastureDetailSection(title, row, columns) {
+  if (!columns.length) return '';
+
+  return `
+    <section class="pasture-detail-section">
+      <h3>${escapeHtml(title)}</h3>
+      <div class="pasture-detail-cards">
+        ${columns
+          .map(
+            (column) => `
+              <article class="pasture-detail-card">
+                <span>${escapeHtml(formatPastureColumnLabel(column))}</span>
+                <strong>${renderPastureDetailValue(row, column)}</strong>
+              </article>
+            `,
+          )
+          .join('')}
+      </div>
+    </section>
   `;
 }
 
 function renderPastureDetailValue(row, column) {
   if (column === 'lotes') return renderPastureModuleLotBadges(row.lotes);
-  if (column === 'status') return renderPastureModuleStatus({ ...row, cor: sanitizeHexColor(row.cor) });
-  if (column === 'cor') return `<span class="pasture-color-value"><i style="background-color: ${sanitizeHexColor(row.cor)}"></i>${escapeHtml(row.cor || '--')}</span>`;
+  if (column === 'ultimoUso') return escapeHtml(row.ultimoUso || '--');
 
   const value = row[column];
   const numericValue = parseNullableNumber(value);
   if (numericValue !== null && column !== 'pasto') return formatNumber(numericValue);
 
   return escapeHtml(value || '--');
-}
-
-function renderPastureDetailMiniStatus(row) {
-  if (!row.status) return '';
-  return renderPastureModuleStatus({ ...row, status: String(row.status).trim().toLowerCase(), cor: sanitizeHexColor(row.cor) });
 }
 
 function comparePastureModuleRows(a, b, sortKey) {
@@ -550,6 +571,8 @@ function formatPastureColumnLabel(column) {
     mediaUaHaMesAtual: 'Média UA/ha mês',
     mediaUaHaAno: 'Média UA/ha ano',
     msPorHaUltimoUso: 'Ms/Ha Ultimo Uso',
+    ultimoUso: 'Data último uso',
+    duracaoUltimoUso: 'Duração último uso',
     diasDescansoAt: 'Dias descanso atual',
     diasDescansoAtual: 'Dias descanso atual',
     status: 'Status',

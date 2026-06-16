@@ -507,6 +507,17 @@ tbody .sticky-pivo {
   font-size: 22px;
 }
 
+.pasture-detail-section {
+  display: grid;
+  gap: 10px;
+}
+
+.pasture-detail-section h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 18px;
+}
+
 .pasture-detail-cards {
   display: grid;
   grid-template-columns: repeat(4, minmax(150px, 1fr));
