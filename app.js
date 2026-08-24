@@ -25,11 +25,21 @@ const ndviMean = document.querySelector('#ndviMean');
 const ndviImageDate = document.querySelector('#ndviImageDate');
 const ndviUpdatedAt = document.querySelector('#ndviUpdatedAt');
 const ndviCloud = document.querySelector('#ndviCloud');
+const visualizationSettingsButton = document.querySelector('#visualizationSettingsButton');
+const visualizationSettingsDialog = document.querySelector('#visualizationSettingsDialog');
+const visualizationSettingsForm = document.querySelector('#visualizationSettingsForm');
+const visualizationSettingsClose = document.querySelector('#visualizationSettingsClose');
+const visualizationSettingsCancel = document.querySelector('#visualizationSettingsCancel');
+const visualizationSettingsMessage = document.querySelector('#visualizationSettingsMessage');
+const visualizationPasswordField = document.querySelector('#visualizationPasswordField');
+const visualizationPassword = document.querySelector('#visualizationPassword');
 
 const spreadsheetId = '1mGjbaGPV7p1V5VTQtgFJNnjf8sJSjHle3ejgO9Id2zo';
 const cattleSpreadsheetId = '1YLM7NkiUAaWqOsLpkj9OIkzrqxIqEx7gavmGlgQbeOk';
 const cattleGid = '259459725';
 const pastureSummaryGid = '916804732';
+const visualizationModeStorageKey = 'fazendapp_visualization_mode';
+const fullModePassword = '0000';
 const defaultIrrigationColumns = [5, 10, 15, 20];
 const extendedIrrigationColumns = [5, 10, 15, 20, 25, 30, 35, 40];
 const defaultBioColumns = [
@@ -65,12 +75,23 @@ const pastureModule = {
   detailColumns: [],
 };
 const hiddenPastureSummaryColumns = ['cor', 'diasOcupadoAno', 'duracaoUltimoUso', 'uaConsumidaUltimoUso', 'ultimoUso'];
+const partialPastureSummaryColumns = ['uaHaAtual', 'pasto', 'area', 'lotes', 'mediaUaHaMesAtual', 'mediaUaHaAno'];
+let visualizationMode = readVisualizationMode();
 
 refreshButton.addEventListener('click', loadSheet);
 tabButtons.forEach((button) => button.addEventListener('click', () => activateTab(button.dataset.tab)));
 sectionButtons.forEach((button) => button.addEventListener('click', () => activateSection(button.dataset.section)));
 pastureSummarySort.addEventListener('change', renderPastureSummary);
 pastureDetailSelect.addEventListener('change', () => renderPastureDetail(pastureDetailSelect.value));
+visualizationSettingsButton.addEventListener('click', openVisualizationSettings);
+visualizationSettingsClose.addEventListener('click', closeVisualizationSettings);
+visualizationSettingsCancel.addEventListener('click', closeVisualizationSettings);
+visualizationSettingsDialog.addEventListener('click', (event) => {
+  if (event.target === visualizationSettingsDialog) closeVisualizationSettings();
+});
+visualizationSettingsForm.addEventListener('change', updateVisualizationPasswordVisibility);
+visualizationSettingsForm.addEventListener('submit', saveVisualizationSettings);
+applyVisualizationMode();
 loadSheet();
 
 async function loadSheet() {
@@ -96,7 +117,9 @@ async function loadSheet() {
   ndviUpdatedAt.textContent = '--';
   ndviCloud.textContent = '--';
 
-  await Promise.allSettled([loadIrrigationData(), loadCattleData(), loadPastureModuleData(), loadNdviData()]);
+  const loadTasks = [loadIrrigationData(), loadCattleData(), loadPastureModuleData()];
+  if (visualizationMode === 'full') loadTasks.push(loadNdviData());
+  await Promise.allSettled(loadTasks);
   refreshButton.disabled = false;
   refreshButton.textContent = 'Atualizar';
 }
@@ -400,9 +423,7 @@ function normalizePastureModuleRow(row) {
 }
 
 function renderPastureSummaryOptions() {
-  const selectableColumns = pastureModule.summaryColumns.filter(
-    (column) => column && !hiddenPastureSummaryColumns.includes(column),
-  );
+  const selectableColumns = getVisiblePastureSummaryColumns();
 
   const selected = selectableColumns.includes(pastureSummarySort.value)
     ? pastureSummarySort.value
@@ -419,17 +440,17 @@ function renderPastureSummaryOptions() {
 function renderPastureSummary() {
   const sortKey = pastureSummarySort.value;
   const selectedColumn = sortKey || 'uaHaAtual';
-  const otherColumns = pastureModule.summaryColumns.filter(
-    (column) => column && !hiddenPastureSummaryColumns.includes(column) && column !== selectedColumn,
-  );
-  const rows = pastureModule.resumo.sort((a, b) => comparePastureModuleRows(a, b, sortKey));
+  const visibleColumns = getVisiblePastureSummaryColumns();
+  const effectiveSelectedColumn = visibleColumns.includes(selectedColumn) ? selectedColumn : visibleColumns[0] || 'uaHaAtual';
+  const otherColumns = visibleColumns.filter((column) => column !== effectiveSelectedColumn);
+  const rows = pastureModule.resumo.sort((a, b) => comparePastureModuleRows(a, b, effectiveSelectedColumn));
 
   pastureSummaryStatus.textContent = `${rows.length} pasto(s) • Atualizado em: ${formatSheetTimestamp(
     pastureModule.resumoUpdatedAt,
   )}`;
   pastureSummaryHead.innerHTML = `
     <tr>
-      <th class="mother-column">${escapeHtml(formatPastureColumnLabel(selectedColumn))}</th>
+      <th class="mother-column">${escapeHtml(formatPastureColumnLabel(effectiveSelectedColumn))}</th>
       ${otherColumns.map((column) => `<th>${escapeHtml(formatPastureColumnLabel(column))}</th>`).join('')}
     </tr>
   `;
@@ -438,7 +459,7 @@ function renderPastureSummary() {
         .map(
           (row) => `
             <tr class="pasture-module-row" style="--pasture-color: ${row.cor}">
-              <td class="mother-cell">${renderPastureSummaryCell(row, selectedColumn, true)}</td>
+              <td class="mother-cell">${renderPastureSummaryCell(row, effectiveSelectedColumn, true)}</td>
               ${otherColumns.map((column) => `<td>${renderPastureSummaryCell(row, column)}</td>`).join('')}
             </tr>
           `,
@@ -1044,8 +1065,80 @@ function formatDateTime(value) {
   });
 }
 
+function readVisualizationMode() {
+  const savedMode = localStorage.getItem(visualizationModeStorageKey);
+  return savedMode === 'partial' ? 'partial' : 'full';
+}
+
+function getVisiblePastureSummaryColumns() {
+  if (visualizationMode === 'partial') {
+    return partialPastureSummaryColumns.filter((column) => pastureModule.summaryColumns.includes(column));
+  }
+
+  return pastureModule.summaryColumns.filter((column) => column && !hiddenPastureSummaryColumns.includes(column));
+}
+
+function applyVisualizationMode() {
+  document.body.dataset.visualizationMode = visualizationMode;
+  document.querySelectorAll('[data-full-only]').forEach((element) => {
+    element.hidden = visualizationMode === 'partial';
+  });
+
+  if (visualizationMode === 'partial') {
+    if (document.querySelector('#ndviSection.active')) activateSection('irrigationSection');
+    if (document.querySelector('#pastureDetailPanel.active')) activateTab('pastosAtuaisPanel');
+  }
+
+  if (pastureModule.summaryColumns.length) {
+    renderPastureSummaryOptions();
+    renderPastureSummary();
+  }
+}
+
+function openVisualizationSettings() {
+  visualizationSettingsMessage.textContent = '';
+  visualizationPassword.value = '';
+  visualizationSettingsForm.elements.visualizationMode.value = visualizationMode;
+  updateVisualizationPasswordVisibility();
+  visualizationSettingsDialog.classList.add('open');
+  visualizationSettingsDialog.setAttribute('aria-hidden', 'false');
+}
+
+function closeVisualizationSettings() {
+  visualizationSettingsDialog.classList.remove('open');
+  visualizationSettingsDialog.setAttribute('aria-hidden', 'true');
+}
+
+function updateVisualizationPasswordVisibility() {
+  const selectedMode = visualizationSettingsForm.elements.visualizationMode.value;
+  const needsPassword = visualizationMode === 'partial' && selectedMode === 'full';
+  visualizationPasswordField.classList.toggle('visible', needsPassword);
+  if (!needsPassword) {
+    visualizationPassword.value = '';
+    visualizationSettingsMessage.textContent = '';
+  }
+}
+
+function saveVisualizationSettings(event) {
+  event.preventDefault();
+  const selectedMode = visualizationSettingsForm.elements.visualizationMode.value;
+
+  if (visualizationMode === 'partial' && selectedMode === 'full' && visualizationPassword.value !== fullModePassword) {
+    visualizationSettingsMessage.textContent = 'Incorrect password.';
+    visualizationPassword.focus();
+    return;
+  }
+
+  visualizationMode = selectedMode === 'partial' ? 'partial' : 'full';
+  localStorage.setItem(visualizationModeStorageKey, visualizationMode);
+  closeVisualizationSettings();
+  applyVisualizationMode();
+}
+
 function activateTab(panelId) {
   const targetPanel = document.getElementById(panelId);
+  if (!targetPanel || (visualizationMode === 'partial' && targetPanel.matches('[data-full-only]'))) return;
+
   const section = targetPanel?.closest('.section-panel');
   const scopedButtons = section ? section.querySelectorAll('.tab-button') : tabButtons;
   const scopedPanels = section ? section.querySelectorAll('.tab-panel') : document.querySelectorAll('.tab-panel');
@@ -1055,6 +1148,9 @@ function activateTab(panelId) {
 }
 
 function activateSection(sectionId) {
+  const targetSection = document.getElementById(sectionId);
+  if (!targetSection || (visualizationMode === 'partial' && targetSection.matches('[data-full-only]'))) return;
+
   sectionButtons.forEach((button) => button.classList.toggle('active', button.dataset.section === sectionId));
   document
     .querySelectorAll('.section-panel')

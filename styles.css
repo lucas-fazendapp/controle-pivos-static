@@ -33,6 +33,10 @@ button {
   font: inherit;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 .app-shell {
   width: min(980px, calc(100% - 32px));
   margin: 0 auto;
@@ -93,6 +97,144 @@ h2 {
 .refresh-button:disabled {
   cursor: wait;
   opacity: 0.72;
+}
+
+.settings-button {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 20;
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 0 12px;
+  box-shadow: 0 10px 28px rgba(23, 32, 42, 0.12);
+}
+
+.settings-button:hover {
+  color: var(--button);
+}
+
+.settings-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(23, 32, 42, 0.35);
+  padding: 20px;
+}
+
+.settings-backdrop.open {
+  display: flex;
+}
+
+.settings-dialog {
+  width: min(420px, 100%);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 24px 70px rgba(23, 32, 42, 0.25);
+  overflow: hidden;
+}
+
+.settings-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--line);
+  padding: 16px 18px;
+}
+
+.settings-dialog-header h2 {
+  font-size: 20px;
+}
+
+.settings-close {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.settings-form {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+}
+
+.settings-form fieldset {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.settings-form legend,
+.password-field {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.settings-form label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.settings-form input[type='radio'] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--button);
+}
+
+.password-field {
+  display: none;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.password-field.visible {
+  display: grid;
+}
+
+.password-field input {
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  font: inherit;
+  padding: 0 10px;
+}
+
+.settings-message {
+  min-height: 18px;
+  color: var(--red);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .summary-grid {

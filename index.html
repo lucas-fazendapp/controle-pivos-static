@@ -27,7 +27,7 @@
       <nav class="section-tabs" aria-label="Áreas do controle">
         <button class="section-button active" type="button" data-section="irrigationSection">Irriga&ccedil;&atilde;o</button>
         <button class="section-button" type="button" data-section="cattleSection">Gado</button>
-        <button class="section-button" type="button" data-section="ndviSection">NDVI</button>
+        <button class="section-button" type="button" data-section="ndviSection" data-full-only>NDVI</button>
       </nav>
 
       <section id="irrigationSection" class="section-panel active">
@@ -109,7 +109,7 @@
         <nav class="tabs" aria-label="Abas de gado">
           <button class="tab-button active" type="button" data-tab="pastosAtuaisPanel">Pastos Atuais</button>
           <button class="tab-button" type="button" data-tab="pastureSummaryPanel">Análise Pastos</button>
-          <button class="tab-button" type="button" data-tab="pastureDetailPanel">Pastos Detalhe</button>
+          <button class="tab-button" type="button" data-tab="pastureDetailPanel" data-full-only>Pastos Detalhe</button>
         </nav>
 
         <section id="pastosAtuaisPanel" class="table-panel tab-panel active">
@@ -165,7 +165,7 @@
           </div>
         </section>
 
-        <section id="pastureDetailPanel" class="table-panel tab-panel">
+        <section id="pastureDetailPanel" class="table-panel tab-panel" data-full-only>
           <div class="table-header">
             <h2>Pastos Detalhe</h2>
             <span id="pastureDetailStatus">Aguardando dados</span>
@@ -186,7 +186,7 @@
         </section>
       </section>
 
-      <section id="ndviSection" class="section-panel">
+      <section id="ndviSection" class="section-panel" data-full-only>
         <section class="table-panel">
           <div class="table-header">
             <h2>Mapa NDVI</h2>
@@ -225,7 +225,46 @@
       </section>
     </main>
 
+    <button id="visualizationSettingsButton" class="settings-button" type="button" aria-haspopup="dialog" aria-controls="visualizationSettingsDialog">
+      Settings
+    </button>
+
+    <div id="visualizationSettingsDialog" class="settings-backdrop" aria-hidden="true">
+      <section class="settings-dialog" role="dialog" aria-modal="true" aria-labelledby="visualizationSettingsTitle">
+        <div class="settings-dialog-header">
+          <h2 id="visualizationSettingsTitle">Settings</h2>
+          <button id="visualizationSettingsClose" class="settings-close" type="button" aria-label="Close settings">&times;</button>
+        </div>
+
+        <form id="visualizationSettingsForm" class="settings-form">
+          <fieldset>
+            <legend>Type of Visualization</legend>
+            <label>
+              <input type="radio" name="visualizationMode" value="full" />
+              Full
+            </label>
+            <label>
+              <input type="radio" name="visualizationMode" value="partial" />
+              Partial
+            </label>
+          </fieldset>
+
+          <label id="visualizationPasswordField" class="password-field">
+            Password
+            <input id="visualizationPassword" type="password" inputmode="numeric" autocomplete="off" placeholder="0000" />
+          </label>
+
+          <p id="visualizationSettingsMessage" class="settings-message" aria-live="polite"></p>
+
+          <div class="settings-actions">
+            <button class="tab-button" type="button" id="visualizationSettingsCancel">Cancel</button>
+            <button class="refresh-button" type="submit">Save</button>
+          </div>
+        </form>
+      </section>
+    </div>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="app.js?v=2026-06-16-pastos-detalhe"></script>
+    <script src="app.js?v=2026-08-24-visualization-mode"></script>
   </body>
 </html>
