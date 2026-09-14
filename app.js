@@ -41,6 +41,9 @@ const spreadsheetId = '1mGjbaGPV7p1V5VTQtgFJNnjf8sJSjHle3ejgO9Id2zo';
 const cattleSpreadsheetId = '1YLM7NkiUAaWqOsLpkj9OIkzrqxIqEx7gavmGlgQbeOk';
 const cattleGid = '259459725';
 const pastureSummaryGid = '916804732';
+const herdSpreadsheetId = '1f8NtubYs6QzEfkj2zZ7hP8Au1f-uiWIMMPZx-2dWa9U';
+const herdGid = '44468886';
+const herdDataRange = 'A18:N38';
 const herdRangeLabel = 'Controle!A18:N38';
 const visualizationModeStorageKey = 'fazendapp_visualization_mode';
 const fullModePassword = '0000';
@@ -212,14 +215,13 @@ async function loadNdviData() {
 
 async function loadHerdData() {
   try {
-    const response = await fetch('/api/rebanho/latest', { cache: 'no-store' });
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || `Erro ${response.status}`);
-    }
-
-    renderHerdTable(data.values || [], data.updatedAt);
+    const table = await loadGoogleSheetTable({
+      spreadsheetId: herdSpreadsheetId,
+      gid: herdGid,
+      range: herdDataRange,
+      label: 'Rebanho',
+    });
+    renderHerdTable([table.columns, ...table.displayRows], new Date().toISOString());
   } catch (error) {
     herdStatus.textContent = 'Erro ao carregar';
     herdRows.innerHTML = `<tr><td class="loading-cell">${error.message}</td></tr>`;
@@ -245,7 +247,7 @@ function loadGoogleSheetRows({ spreadsheetId, sheetName, gid, label }) {
   return loadGoogleSheetTable({ spreadsheetId, sheetName, gid, label }).then((table) => table.rows);
 }
 
-function loadGoogleSheetTable({ spreadsheetId, sheetName, gid, label }) {
+function loadGoogleSheetTable({ spreadsheetId, sheetName, gid, range, label }) {
   return new Promise((resolve, reject) => {
     const callbackName = `handleSheet_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const script = document.createElement('script');
@@ -268,10 +270,11 @@ function loadGoogleSheetTable({ spreadsheetId, sheetName, gid, label }) {
       reject(new Error(`${label}: erro ao carregar script`));
     };
 
-    const source = gid ? `gid=${encodeURIComponent(gid)}` : `sheet=${encodeURIComponent(sheetName)}`;
+    const sourceParts = gid ? [`gid=${encodeURIComponent(gid)}`] : [`sheet=${encodeURIComponent(sheetName)}`];
+    if (range) sourceParts.push(`range=${encodeURIComponent(range)}`);
     script.src =
       `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq` +
-      `?tqx=out:json;responseHandler:${callbackName}&${source}`;
+      `?tqx=out:json;responseHandler:${callbackName}&${sourceParts.join('&')}`;
     document.head.append(script);
 
     function cleanup() {
