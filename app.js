@@ -922,7 +922,7 @@ function renderHerdCell(value, header, index) {
   const normalizedHeader = normalizeText(header);
   const typeClass = normalizedHeader === 'SOMA' ? 'sum' : normalizedHeader === 'UA' ? 'ua' : 'default';
 
-  return `<span class="herd-value-badge ${typeClass}">${escapeHtml(label || '--')}</span>`;
+  return `<span class="herd-value-badge ${typeClass}">${escapeHtml(label)}</span>`;
 }
 
 function getHerdCellClass(header, index) {

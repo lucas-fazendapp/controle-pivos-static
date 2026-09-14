@@ -638,6 +638,14 @@ tbody .sticky-pivo {
   background: #fffafa;
 }
 
+.herd-table tbody tr:nth-child(odd) {
+  background: #fff;
+}
+
+.herd-table tbody tr:nth-child(even) {
+  background: #f7f9fb;
+}
+
 .herd-table .herd-lot-column {
   min-width: 116px;
   text-align: left;
@@ -648,6 +656,7 @@ tbody .sticky-pivo {
 }
 
 .herd-table .herd-ua-column {
+  border-left: 22px solid #fff;
   min-width: 76px;
 }
 
