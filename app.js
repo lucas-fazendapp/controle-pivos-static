@@ -43,8 +43,8 @@ const cattleGid = '259459725';
 const pastureSummaryGid = '916804732';
 const herdSpreadsheetId = '1f8NtubYs6QzEfkj2zZ7hP8Au1f-uiWIMMPZx-2dWa9U';
 const herdGid = '44468886';
-const herdDataRange = 'A18:N38';
-const herdRangeLabel = 'Controle!A18:N38';
+const herdDataRange = 'B18:M38';
+const herdRangeLabel = 'Controle!B18:M38';
 const visualizationModeStorageKey = 'fazendapp_visualization_mode';
 const fullModePassword = '0000';
 const defaultIrrigationColumns = [5, 10, 15, 20];
@@ -859,7 +859,12 @@ function renderHerdTable(values, updatedAt) {
   herdStatus.textContent = `${table.rows.length} lote(s) • ${herdRangeLabel} • Atualizado em: ${formatDateTime(updatedAt)}`;
   herdHead.innerHTML = `
     <tr>
-      ${table.headers.map((header, index) => `<th class="${getHerdCellClass(header, index)}">${escapeHtml(header)}</th>`).join('')}
+      ${table.headers
+        .map(
+          (header, index) =>
+            `<th class="${getHerdCellClass(header, index)}"><span class="herd-header-box">${escapeHtml(header)}</span></th>`,
+        )
+        .join('')}
     </tr>
   `;
   herdRows.innerHTML = table.rows
@@ -869,7 +874,7 @@ function renderHerdTable(values, updatedAt) {
           ${row
             .map((cell, index) => {
               const header = table.headers[index] || '';
-              const content = index === 0 ? renderHerdLot(cell) : escapeHtml(cell || '--');
+              const content = renderHerdCell(cell, header, index);
               return `<td class="${getHerdCellClass(header, index)}">${content}</td>`;
             })
             .join('')}
@@ -910,12 +915,23 @@ function renderHerdLot(value) {
   return label ? `<span class="herd-lot-badge">${escapeHtml(label)}</span>` : '--';
 }
 
+function renderHerdCell(value, header, index) {
+  if (index === 0) return renderHerdLot(value);
+
+  const label = String(value || '').trim();
+  const normalizedHeader = normalizeText(header);
+  const typeClass = normalizedHeader === 'SOMA' ? 'sum' : normalizedHeader === 'UA' ? 'ua' : 'default';
+
+  return `<span class="herd-value-badge ${typeClass}">${escapeHtml(label || '--')}</span>`;
+}
+
 function getHerdCellClass(header, index) {
   const normalizedHeader = normalizeText(header);
   const classes = [];
 
   if (index === 0) classes.push('herd-lot-column');
-  if (['SOMA', 'UA'].includes(normalizedHeader)) classes.push('herd-total-column');
+  if (normalizedHeader === 'SOMA') classes.push('herd-sum-column');
+  if (normalizedHeader === 'UA') classes.push('herd-ua-column');
 
   return classes.join(' ');
 }
