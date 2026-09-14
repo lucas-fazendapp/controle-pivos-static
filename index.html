@@ -27,6 +27,7 @@
       <nav class="section-tabs" aria-label="Áreas do controle">
         <button class="section-button active" type="button" data-section="irrigationSection">Irriga&ccedil;&atilde;o</button>
         <button class="section-button" type="button" data-section="cattleSection">Gado</button>
+        <button class="section-button" type="button" data-section="herdSection">Rebanho</button>
         <button class="section-button" type="button" data-section="ndviSection" data-full-only>NDVI</button>
       </nav>
 
@@ -186,6 +187,30 @@
         </section>
       </section>
 
+      <section id="herdSection" class="section-panel">
+        <section class="table-panel">
+          <div class="table-header">
+            <h2>Rebanho</h2>
+            <span id="herdStatus">Aguardando dados</span>
+          </div>
+
+          <div class="table-wrap">
+            <table class="herd-table">
+              <thead id="herdHead">
+                <tr>
+                  <th>Rebanho</th>
+                </tr>
+              </thead>
+              <tbody id="herdRows">
+                <tr>
+                  <td class="loading-cell">Carregando...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
       <section id="ndviSection" class="section-panel" data-full-only>
         <section class="table-panel">
           <div class="table-header">
@@ -265,6 +290,6 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="app.js?v=2026-08-24-visualization-mode"></script>
+    <script src="app.js?v=2026-09-13-rebanho"></script>
   </body>
 </html>

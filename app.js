@@ -13,6 +13,9 @@ const sectionButtons = document.querySelectorAll('.section-button');
 const pastosStatus = document.querySelector('#pastosStatus');
 const pastosHead = document.querySelector('#pastosHead');
 const pastosRows = document.querySelector('#pastosRows');
+const herdStatus = document.querySelector('#herdStatus');
+const herdHead = document.querySelector('#herdHead');
+const herdRows = document.querySelector('#herdRows');
 const pastureSummaryStatus = document.querySelector('#pastureSummaryStatus');
 const pastureSummarySort = document.querySelector('#pastureSummarySort');
 const pastureSummaryHead = document.querySelector('#pastureSummaryHead');
@@ -38,6 +41,7 @@ const spreadsheetId = '1mGjbaGPV7p1V5VTQtgFJNnjf8sJSjHle3ejgO9Id2zo';
 const cattleSpreadsheetId = '1YLM7NkiUAaWqOsLpkj9OIkzrqxIqEx7gavmGlgQbeOk';
 const cattleGid = '259459725';
 const pastureSummaryGid = '916804732';
+const herdRangeLabel = 'Controle!A18:N38';
 const visualizationModeStorageKey = 'fazendapp_visualization_mode';
 const fullModePassword = '0000';
 const defaultIrrigationColumns = [5, 10, 15, 20];
@@ -105,6 +109,9 @@ async function loadSheet() {
   pastosStatus.textContent = 'Carregando...';
   pastosHead.innerHTML = '<tr><th>Pastos Atuais</th></tr>';
   pastosRows.innerHTML = '<tr><td class="loading-cell">Carregando...</td></tr>';
+  herdStatus.textContent = 'Carregando...';
+  herdHead.innerHTML = '<tr><th>Rebanho</th></tr>';
+  herdRows.innerHTML = '<tr><td class="loading-cell">Carregando...</td></tr>';
   pastureSummaryStatus.textContent = 'Carregando...';
   pastureSummaryHead.innerHTML = '<tr><th>Pastos</th></tr>';
   pastureSummaryRows.innerHTML = '<tr><td class="loading-cell">Carregando...</td></tr>';
@@ -117,7 +124,7 @@ async function loadSheet() {
   ndviUpdatedAt.textContent = '--';
   ndviCloud.textContent = '--';
 
-  const loadTasks = [loadIrrigationData(), loadCattleData(), loadPastureModuleData()];
+  const loadTasks = [loadIrrigationData(), loadCattleData(), loadPastureModuleData(), loadHerdData()];
   if (visualizationMode === 'full') loadTasks.push(loadNdviData());
   await Promise.allSettled(loadTasks);
   refreshButton.disabled = false;
@@ -200,6 +207,22 @@ async function loadNdviData() {
     renderNdvi(data);
   } catch (error) {
     ndviStatus.textContent = 'Erro ao carregar NDVI';
+  }
+}
+
+async function loadHerdData() {
+  try {
+    const response = await fetch('/api/rebanho/latest', { cache: 'no-store' });
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || `Erro ${response.status}`);
+    }
+
+    renderHerdTable(data.values || [], data.updatedAt);
+  } catch (error) {
+    herdStatus.textContent = 'Erro ao carregar';
+    herdRows.innerHTML = `<tr><td class="loading-cell">${error.message}</td></tr>`;
   }
 }
 
@@ -818,6 +841,80 @@ function renderPastosAtuaisTable(table) {
         )
         .join('')
     : '<tr><td class="loading-cell">Nenhum lote encontrado.</td></tr>';
+}
+
+function renderHerdTable(values, updatedAt) {
+  const table = normalizeHerdValues(values);
+
+  if (!table.rows.length) {
+    herdStatus.textContent = `Sem dados • ${herdRangeLabel}`;
+    herdHead.innerHTML = '<tr><th>Rebanho</th></tr>';
+    herdRows.innerHTML = '<tr><td class="loading-cell">Nenhum dado encontrado.</td></tr>';
+    return;
+  }
+
+  herdStatus.textContent = `${table.rows.length} lote(s) • ${herdRangeLabel} • Atualizado em: ${formatDateTime(updatedAt)}`;
+  herdHead.innerHTML = `
+    <tr>
+      ${table.headers.map((header, index) => `<th class="${getHerdCellClass(header, index)}">${escapeHtml(header)}</th>`).join('')}
+    </tr>
+  `;
+  herdRows.innerHTML = table.rows
+    .map(
+      (row) => `
+        <tr>
+          ${row
+            .map((cell, index) => {
+              const header = table.headers[index] || '';
+              const content = index === 0 ? renderHerdLot(cell) : escapeHtml(cell || '--');
+              return `<td class="${getHerdCellClass(header, index)}">${content}</td>`;
+            })
+            .join('')}
+        </tr>
+      `,
+    )
+    .join('');
+}
+
+function normalizeHerdValues(values) {
+  const rows = values.filter((row) => row.some((cell) => String(cell || '').trim()));
+  if (!rows.length) return { headers: [], rows: [] };
+
+  const maxColumns = rows.reduce((max, row) => Math.max(max, row.length), 0);
+  const normalizedRows = rows.map((row) =>
+    Array.from({ length: maxColumns }, (_, index) => String(row[index] ?? '').trim()),
+  );
+  const visibleColumnIndexes = Array.from({ length: maxColumns }, (_, index) => index).filter((index) =>
+    normalizedRows.some((row) => row[index]),
+  );
+  const compactRows = normalizedRows.map((row) => visibleColumnIndexes.map((index) => row[index]));
+  const rawHeaders = compactRows[0] || [];
+  const headers = rawHeaders.map((header, index) => {
+    if (header) return header;
+    if (index === 0) return 'Lote';
+    return `Coluna ${index + 1}`;
+  });
+  const bodyRows = compactRows.slice(1).filter((row) => row.some((cell) => cell));
+
+  return {
+    headers,
+    rows: bodyRows,
+  };
+}
+
+function renderHerdLot(value) {
+  const label = String(value || '').trim();
+  return label ? `<span class="herd-lot-badge">${escapeHtml(label)}</span>` : '--';
+}
+
+function getHerdCellClass(header, index) {
+  const normalizedHeader = normalizeText(header);
+  const classes = [];
+
+  if (index === 0) classes.push('herd-lot-column');
+  if (['SOMA', 'UA'].includes(normalizedHeader)) classes.push('herd-total-column');
+
+  return classes.join(' ');
 }
 
 function renderNdvi(data) {
