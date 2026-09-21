@@ -69,7 +69,6 @@ const herdGid = '44468886';
 const herdDataRange = 'B18:M38';
 const herdRangeLabel = 'Controle!B18:M38';
 const visualizationModeStorageKey = 'fazendapp_visualization_mode';
-const earringsAccessStorageKey = 'fazendapp_arrobaplus_access';
 const fullModePassword = '0000';
 const defaultIrrigationColumns = [5, 10, 15, 20];
 const extendedIrrigationColumns = [5, 10, 15, 20, 25, 30, 35, 40];
@@ -169,12 +168,7 @@ async function loadSheet() {
   const loadTasks = [loadIrrigationData(), loadCattleData(), loadPastureModuleData(), loadHerdData()];
   if (visualizationMode === 'full') {
     loadTasks.push(loadNdviData());
-    if (readEarringsAccessSecret()) {
-      loadTasks.push(loadEarringsData());
-    } else {
-      earringsStatus.textContent = 'Acesso protegido';
-      earringsRows.innerHTML = '<tr><td colspan="6" class="loading-cell">Abra a secao Brincos para acessar.</td></tr>';
-    }
+    loadTasks.push(loadEarringsData());
   }
   await Promise.allSettled(loadTasks);
   refreshButton.disabled = false;
@@ -261,8 +255,6 @@ async function loadNdviData() {
 }
 
 async function loadEarringsData(view = 'animals') {
-  const accessSecret = readEarringsAccessSecret();
-  if (!accessSecret) return;
   if (view !== 'animals' && loadedEarringsViews.has(view)) return;
 
   setEarringsLoading(view);
@@ -280,13 +272,13 @@ async function loadEarringsData(view = 'animals') {
       if (earringsMaxWeight.value) params.set('maxWeight', earringsMaxWeight.value);
     }
 
-    const data = await fetchEarringsPage(params, accessSecret);
+    const data = await fetchEarringsPage(params);
     if (view !== 'animals' && data.totalPages > 1) {
       const remainingPages = await Promise.all(
         Array.from({ length: data.totalPages - 1 }, (_, index) => {
           const nextParams = new URLSearchParams(params);
           nextParams.set('page', String(index + 2));
-          return fetchEarringsPage(nextParams, accessSecret);
+          return fetchEarringsPage(nextParams);
         }),
       );
       data.records.push(...remainingPages.flatMap((page) => page.records));
@@ -300,13 +292,11 @@ async function loadEarringsData(view = 'animals') {
   }
 }
 
-async function fetchEarringsPage(params, accessSecret) {
+async function fetchEarringsPage(params) {
   const response = await fetch(`/api/arrobaplus/latest?${params}`, {
     cache: 'no-store',
-    headers: { 'x-arrobaplus-secret': accessSecret },
   });
   const data = await response.json();
-  if (response.status === 401) sessionStorage.removeItem(earringsAccessStorageKey);
   if (!response.ok) throw new Error(data.error || `Erro ${response.status}`);
   return data;
 }
@@ -448,9 +438,6 @@ function changeEarringsPage(direction) {
 }
 
 async function syncEarringsData() {
-  const secret = window.prompt('Senha de atualizacao do Arroba Plus:');
-  if (!secret) return;
-
   earringsSyncButton.disabled = true;
   earringsSyncButton.textContent = 'Atualizando...';
   earringsStatus.textContent = 'Coletando dados do Arroba Plus...';
@@ -458,7 +445,6 @@ async function syncEarringsData() {
   try {
     const response = await fetch('/api/arrobaplus/update', {
       method: 'POST',
-      headers: { 'x-refresh-secret': secret },
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || `Erro ${response.status}`);
@@ -472,19 +458,6 @@ async function syncEarringsData() {
     earringsSyncButton.disabled = false;
     earringsSyncButton.textContent = 'Atualizar Arroba Plus';
   }
-}
-
-function readEarringsAccessSecret() {
-  return sessionStorage.getItem(earringsAccessStorageKey) || '';
-}
-
-function requestEarringsAccess() {
-  const existingSecret = readEarringsAccessSecret();
-  if (existingSecret) return true;
-  const secret = window.prompt('Senha de acesso do Arroba Plus:');
-  if (!secret) return false;
-  sessionStorage.setItem(earringsAccessStorageKey, secret);
-  return true;
 }
 
 function formatAnimalSex(value) {
@@ -1576,7 +1549,7 @@ function activateSection(sectionId) {
     .querySelectorAll('.section-panel')
     .forEach((section) => section.classList.toggle('active', section.id === sectionId));
 
-  if (sectionId === 'earringsSection' && requestEarringsAccess()) {
+  if (sectionId === 'earringsSection') {
     loadEarringsData();
   }
 

@@ -293,20 +293,10 @@ function filterSnapshot(snapshot, query = {}) {
 }
 
 function isUpdateAuthorized(request) {
+  if (request.method === 'POST') return true;
   const cronSecret = process.env.CRON_SECRET;
-  const refreshSecret = process.env.ARROBAPLUS_REFRESH_SECRET;
   const authorization = request.headers.authorization || '';
-  const suppliedRefreshSecret = request.headers['x-refresh-secret'] || '';
-  return Boolean(
-    (cronSecret && secretsEqual(authorization, `Bearer ${cronSecret}`)) ||
-      (refreshSecret && secretsEqual(suppliedRefreshSecret, refreshSecret)),
-  );
-}
-
-function isReadAuthorized(request) {
-  const readSecret = process.env.ARROBAPLUS_READ_SECRET || process.env.ARROBAPLUS_REFRESH_SECRET;
-  const suppliedSecret = request.headers['x-arrobaplus-secret'] || '';
-  return Boolean(readSecret && secretsEqual(suppliedSecret, readSecret));
+  return Boolean(cronSecret && secretsEqual(authorization, `Bearer ${cronSecret}`));
 }
 
 function secretsEqual(left, right) {
@@ -322,7 +312,6 @@ module.exports = {
   collectData,
   collectSnapshot,
   filterSnapshot,
-  isReadAuthorized,
   isUpdateAuthorized,
   normalizeAnimal,
   normalizeDeath,

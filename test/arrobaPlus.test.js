@@ -5,7 +5,6 @@ const {
   buildAgeGroups,
   calculateAgeMonths,
   filterSnapshot,
-  isReadAuthorized,
   isUpdateAuthorized,
   normalizeAnimal,
   normalizeDeath,
@@ -113,21 +112,16 @@ test('filterSnapshot selects entries and deaths independently', () => {
   assert.deepEqual(deaths.records.map((record) => record.id), [1]);
 });
 
-test('Arroba Plus endpoints require the configured secrets', () => {
-  const previousReadSecret = process.env.ARROBAPLUS_READ_SECRET;
-  const previousRefreshSecret = process.env.ARROBAPLUS_REFRESH_SECRET;
-  process.env.ARROBAPLUS_READ_SECRET = 'read-secret';
-  process.env.ARROBAPLUS_REFRESH_SECRET = 'refresh-secret';
+test('manual updates are open while scheduled updates require CRON_SECRET', () => {
+  const previousCronSecret = process.env.CRON_SECRET;
+  process.env.CRON_SECRET = 'cron-secret';
 
   try {
-    assert.equal(isReadAuthorized({ headers: { 'x-arrobaplus-secret': 'read-secret' } }), true);
-    assert.equal(isReadAuthorized({ headers: { 'x-arrobaplus-secret': 'wrong' } }), false);
-    assert.equal(isUpdateAuthorized({ headers: { 'x-refresh-secret': 'refresh-secret' } }), true);
-    assert.equal(isUpdateAuthorized({ headers: { 'x-refresh-secret': 'wrong' } }), false);
+    assert.equal(isUpdateAuthorized({ method: 'POST', headers: {} }), true);
+    assert.equal(isUpdateAuthorized({ method: 'GET', headers: { authorization: 'Bearer cron-secret' } }), true);
+    assert.equal(isUpdateAuthorized({ method: 'GET', headers: { authorization: 'Bearer wrong' } }), false);
   } finally {
-    if (previousReadSecret === undefined) delete process.env.ARROBAPLUS_READ_SECRET;
-    else process.env.ARROBAPLUS_READ_SECRET = previousReadSecret;
-    if (previousRefreshSecret === undefined) delete process.env.ARROBAPLUS_REFRESH_SECRET;
-    else process.env.ARROBAPLUS_REFRESH_SECRET = previousRefreshSecret;
+    if (previousCronSecret === undefined) delete process.env.CRON_SECRET;
+    else process.env.CRON_SECRET = previousCronSecret;
   }
 });

@@ -1,12 +1,10 @@
-const { filterSnapshot, isReadAuthorized, readSnapshot } = require('../_lib/arrobaPlus');
+const { filterSnapshot, readSnapshot } = require('../_lib/arrobaPlus');
 
 module.exports = async function handler(request, response) {
   if (request.method !== 'GET') {
     response.setHeader('Allow', 'GET');
     return response.status(405).json({ error: 'Metodo nao permitido.' });
   }
-  if (!isReadAuthorized(request)) return response.status(401).json({ error: 'Acesso nao autorizado.' });
-
   try {
     const snapshot = await readSnapshot();
     if (!snapshot) return response.status(404).json({ error: 'Ainda nao existe uma coleta do Arroba Plus.' });

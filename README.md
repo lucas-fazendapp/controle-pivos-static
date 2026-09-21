@@ -11,8 +11,6 @@ Variaveis de ambiente necessarias na Vercel:
 - `ARROBAPLUS_EMAIL`: usuario do portal Arroba Plus.
 - `ARROBAPLUS_PASSWORD`: senha do portal Arroba Plus.
 - `ARROBAPLUS_FARM_ID`: ID da fazenda, opcional quando o usuario possui apenas uma fazenda.
-- `ARROBAPLUS_REFRESH_SECRET`: senha usada no botao de atualizacao manual.
-- `ARROBAPLUS_READ_SECRET`: senha de acesso aos brincos; se omitida, usa `ARROBAPLUS_REFRESH_SECRET`.
 - `CRON_SECRET`: segredo usado pela Vercel para autenticar os agendamentos.
 
 Crie tambem um Vercel Blob privado conectado ao projeto. A Vercel fornece automaticamente `BLOB_STORE_ID` e a autenticacao OIDC; para execucao fora da Vercel, use `BLOB_READ_WRITE_TOKEN`.
@@ -21,8 +19,9 @@ O agendamento definido em `vercel.json` atualiza os brincos diariamente as 09:30
 
 Endpoints:
 
-- `GET /api/arrobaplus/latest`: consulta paginada do ultimo snapshot; exige `x-arrobaplus-secret`.
-- `GET|POST /api/arrobaplus/update`: cria um snapshot novo; exige autenticacao do cron ou `x-refresh-secret`.
+- `GET /api/arrobaplus/latest`: consulta paginada do ultimo snapshot.
+- `POST /api/arrobaplus/update`: atualizacao manual pelo botao do site.
+- `GET /api/arrobaplus/update`: atualizacao agendada, autenticada pela Vercel com `CRON_SECRET`.
 
 O campo exibido como brinco e `codeSisboV`, pois `codeEarring` estava vazio na coleta de referencia.
 
