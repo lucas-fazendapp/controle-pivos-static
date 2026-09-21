@@ -28,6 +28,29 @@ const ndviMean = document.querySelector('#ndviMean');
 const ndviImageDate = document.querySelector('#ndviImageDate');
 const ndviUpdatedAt = document.querySelector('#ndviUpdatedAt');
 const ndviCloud = document.querySelector('#ndviCloud');
+const earringsStatus = document.querySelector('#earringsStatus');
+const earringsTotal = document.querySelector('#earringsTotal');
+const earringsMale = document.querySelector('#earringsMale');
+const earringsFemale = document.querySelector('#earringsFemale');
+const earringsAverageWeight = document.querySelector('#earringsAverageWeight');
+const earringsAgeGroups = document.querySelector('#earringsAgeGroups');
+const earringsFilters = document.querySelector('#earringsFilters');
+const earringsSearch = document.querySelector('#earringsSearch');
+const earringsSex = document.querySelector('#earringsSex');
+const earringsMinWeight = document.querySelector('#earringsMinWeight');
+const earringsMaxWeight = document.querySelector('#earringsMaxWeight');
+const earringsSyncButton = document.querySelector('#earringsSyncButton');
+const earringsRows = document.querySelector('#earringsRows');
+const earringsPrevious = document.querySelector('#earringsPrevious');
+const earringsNext = document.querySelector('#earringsNext');
+const earringsPage = document.querySelector('#earringsPage');
+const earringsViewButtons = document.querySelectorAll('[data-earrings-view]');
+const earringsDeathsStatus = document.querySelector('#earringsDeathsStatus');
+const earringsDeathsRows = document.querySelector('#earringsDeathsRows');
+const earringsEntriesStatus = document.querySelector('#earringsEntriesStatus');
+const earringsEntriesRows = document.querySelector('#earringsEntriesRows');
+const earringsExitsStatus = document.querySelector('#earringsExitsStatus');
+const earringsExitsRows = document.querySelector('#earringsExitsRows');
 const visualizationSettingsButton = document.querySelector('#visualizationSettingsButton');
 const visualizationSettingsDialog = document.querySelector('#visualizationSettingsDialog');
 const visualizationSettingsForm = document.querySelector('#visualizationSettingsForm');
@@ -46,6 +69,7 @@ const herdGid = '44468886';
 const herdDataRange = 'B18:M38';
 const herdRangeLabel = 'Controle!B18:M38';
 const visualizationModeStorageKey = 'fazendapp_visualization_mode';
+const earringsAccessStorageKey = 'fazendapp_arrobaplus_access';
 const fullModePassword = '0000';
 const defaultIrrigationColumns = [5, 10, 15, 20];
 const extendedIrrigationColumns = [5, 10, 15, 20, 25, 30, 35, 40];
@@ -73,6 +97,8 @@ const pivoSheets = [
 ];
 let ndviMap;
 let ndviLayer;
+let earringsCurrentPage = 1;
+const loadedEarringsViews = new Set();
 const pastureModule = {
   resumo: [],
   resumoUpdatedAt: '',
@@ -90,6 +116,17 @@ tabButtons.forEach((button) => button.addEventListener('click', () => activateTa
 sectionButtons.forEach((button) => button.addEventListener('click', () => activateSection(button.dataset.section)));
 pastureSummarySort.addEventListener('change', renderPastureSummary);
 pastureDetailSelect.addEventListener('change', () => renderPastureDetail(pastureDetailSelect.value));
+earringsFilters.addEventListener('submit', (event) => {
+  event.preventDefault();
+  earringsCurrentPage = 1;
+  loadEarringsData();
+});
+earringsPrevious.addEventListener('click', () => changeEarringsPage(-1));
+earringsNext.addEventListener('click', () => changeEarringsPage(1));
+earringsSyncButton.addEventListener('click', syncEarringsData);
+earringsViewButtons.forEach((button) =>
+  button.addEventListener('click', () => loadEarringsData(button.dataset.earringsView)),
+);
 visualizationSettingsButton.addEventListener('click', openVisualizationSettings);
 visualizationSettingsClose.addEventListener('click', closeVisualizationSettings);
 visualizationSettingsCancel.addEventListener('click', closeVisualizationSettings);
@@ -126,9 +163,19 @@ async function loadSheet() {
   ndviImageDate.textContent = '--';
   ndviUpdatedAt.textContent = '--';
   ndviCloud.textContent = '--';
+  earringsStatus.textContent = 'Carregando...';
+  earringsRows.innerHTML = '<tr><td colspan="6" class="loading-cell">Carregando...</td></tr>';
 
   const loadTasks = [loadIrrigationData(), loadCattleData(), loadPastureModuleData(), loadHerdData()];
-  if (visualizationMode === 'full') loadTasks.push(loadNdviData());
+  if (visualizationMode === 'full') {
+    loadTasks.push(loadNdviData());
+    if (readEarringsAccessSecret()) {
+      loadTasks.push(loadEarringsData());
+    } else {
+      earringsStatus.textContent = 'Acesso protegido';
+      earringsRows.innerHTML = '<tr><td colspan="6" class="loading-cell">Abra a secao Brincos para acessar.</td></tr>';
+    }
+  }
   await Promise.allSettled(loadTasks);
   refreshButton.disabled = false;
   refreshButton.textContent = 'Atualizar';
@@ -211,6 +258,263 @@ async function loadNdviData() {
   } catch (error) {
     ndviStatus.textContent = 'Erro ao carregar NDVI';
   }
+}
+
+async function loadEarringsData(view = 'animals') {
+  const accessSecret = readEarringsAccessSecret();
+  if (!accessSecret) return;
+  if (view !== 'animals' && loadedEarringsViews.has(view)) return;
+
+  setEarringsLoading(view);
+
+  try {
+    const params = new URLSearchParams({
+      view,
+      page: String(earringsCurrentPage),
+      pageSize: view === 'animals' ? '50' : '100',
+    });
+    if (view === 'animals') {
+      if (earringsSearch.value.trim()) params.set('q', earringsSearch.value.trim());
+      if (earringsSex.value) params.set('sex', earringsSex.value);
+      if (earringsMinWeight.value) params.set('minWeight', earringsMinWeight.value);
+      if (earringsMaxWeight.value) params.set('maxWeight', earringsMaxWeight.value);
+    }
+
+    const data = await fetchEarringsPage(params, accessSecret);
+    if (view !== 'animals' && data.totalPages > 1) {
+      const remainingPages = await Promise.all(
+        Array.from({ length: data.totalPages - 1 }, (_, index) => {
+          const nextParams = new URLSearchParams(params);
+          nextParams.set('page', String(index + 2));
+          return fetchEarringsPage(nextParams, accessSecret);
+        }),
+      );
+      data.records.push(...remainingPages.flatMap((page) => page.records));
+    }
+
+    if (view === 'animals') earringsCurrentPage = data.page;
+    renderEarringsView(view, data);
+    loadedEarringsViews.add(view);
+  } catch (error) {
+    renderEarringsError(view, error.message);
+  }
+}
+
+async function fetchEarringsPage(params, accessSecret) {
+  const response = await fetch(`/api/arrobaplus/latest?${params}`, {
+    cache: 'no-store',
+    headers: { 'x-arrobaplus-secret': accessSecret },
+  });
+  const data = await response.json();
+  if (response.status === 401) sessionStorage.removeItem(earringsAccessStorageKey);
+  if (!response.ok) throw new Error(data.error || `Erro ${response.status}`);
+  return data;
+}
+
+function setEarringsLoading(view) {
+  const targets = {
+    animals: [earringsStatus, earringsRows, 6],
+    deaths: [earringsDeathsStatus, earringsDeathsRows, 6],
+    entries: [earringsEntriesStatus, earringsEntriesRows, 7],
+    exits: [earringsExitsStatus, earringsExitsRows, 7],
+  };
+  const [status, rows, columns] = targets[view];
+  status.textContent = 'Carregando...';
+  rows.innerHTML = `<tr><td colspan="${columns}" class="loading-cell">Carregando...</td></tr>`;
+}
+
+function renderEarringsView(view, data) {
+  if (view === 'animals') renderGeneralCattle(data);
+  if (view === 'deaths') renderDeaths(data);
+  if (view === 'entries') renderEntries(data);
+  if (view === 'exits') renderExits(data);
+}
+
+function renderGeneralCattle(data) {
+  const summary = data.summary || {};
+  earringsTotal.textContent = formatNumber(summary.total || 0);
+  earringsMale.textContent = formatNumber(summary.machos || 0);
+  earringsFemale.textContent = formatNumber(summary.femeas || 0);
+  earringsAverageWeight.textContent = Number.isFinite(summary.pesoMedio)
+    ? `${formatNumber(summary.pesoMedio)} kg`
+    : '--';
+  earringsStatus.textContent = `${formatNumber(data.resultCount)} resultado(s) - Atualizado em: ${formatDateTime(data.collectedAt)}`;
+  earringsAgeGroups.innerHTML = (summary.faixasEtarias || [])
+    .map(
+      (group) => `<div><span>${escapeHtml(group.label)}</span><strong>${formatNumber(group.total || 0)}</strong></div>`,
+    )
+    .join('');
+
+  earringsRows.innerHTML = data.records.length
+    ? data.records
+        .map(
+          (animal) => `
+            <tr>
+              <td><span class="earring-code">${escapeHtml(animal.brinco || `ID ${animal.id}`)}</span></td>
+              <td>${escapeHtml(formatAnimalSex(animal.sexo))}</td>
+              <td>${formatAnimalWeight(animal.peso)}</td>
+              <td>${formatAnimalWeight(animal.pesoInicial)}</td>
+              <td>${Number.isFinite(animal.idadeMeses) ? `${formatNumber(animal.idadeMeses)} meses` : '--'}</td>
+              <td>${escapeHtml(formatAnimalDate(animal.ultimaPesagem))}</td>
+            </tr>
+          `,
+        )
+        .join('')
+    : '<tr><td colspan="6" class="loading-cell">Nenhum animal encontrado.</td></tr>';
+
+  updateEarringsPagination(data.page, data.totalPages);
+}
+
+function renderDeaths(data) {
+  earringsDeathsStatus.textContent = `${formatNumber(data.resultCount)} registro(s) - Atualizado em: ${formatDateTime(data.collectedAt)}`;
+  earringsDeathsRows.innerHTML = data.records.length
+    ? data.records
+        .map(
+          (record) => `<tr>
+            <td><span class="earring-code">${escapeHtml(record.brinco || `ID ${record.id}`)}</span></td>
+            <td>${escapeHtml(formatAnimalSex(record.sexo))}</td>
+            <td>${escapeHtml(formatAnimalDate(record.dataMorte))}</td>
+            <td>${escapeHtml(record.motivoMorte || record.causaMorte || '--')}</td>
+            <td>${Number.isFinite(record.idadeMeses) ? `${formatNumber(record.idadeMeses)} meses` : '--'}</td>
+            <td>${formatAnimalWeight(record.peso)}</td>
+          </tr>`,
+        )
+        .join('')
+    : '<tr><td colspan="6" class="loading-cell">Nenhum registro de morte.</td></tr>';
+}
+
+function renderEntries(data) {
+  const totalAnimals = data.records.reduce((sum, record) => sum + (record.animais || 0), 0);
+  earringsEntriesStatus.textContent = `${formatNumber(data.resultCount)} entrada(s) - ${formatNumber(totalAnimals)} animal(is)`;
+  earringsEntriesRows.innerHTML = data.records.length
+    ? data.records
+        .map(
+          (record) => `<tr>
+            <td><span class="earring-code">${escapeHtml(record.id)}</span></td>
+            <td>${escapeHtml(formatEntryReason(record.motivo))}</td>
+            <td><span class="herd-value-badge sum">${formatNumber(record.animais || 0)}</span></td>
+            <td>${escapeHtml(formatAnimalDateTime(record.inicio))}</td>
+            <td>${escapeHtml(formatAnimalDateTime(record.chegada))}</td>
+            <td>${escapeHtml(record.raca || '--')}</td>
+            <td>${escapeHtml(record.gta || '--')}</td>
+          </tr>`,
+        )
+        .join('')
+    : '<tr><td colspan="7" class="loading-cell">Nenhuma entrada encontrada.</td></tr>';
+}
+
+function renderExits(data) {
+  const totalAnimals = data.records.reduce((sum, record) => sum + (record.animais || 0), 0);
+  earringsExitsStatus.textContent = `${formatNumber(data.resultCount)} saida(s) - ${formatNumber(totalAnimals)} animal(is)`;
+  earringsExitsRows.innerHTML = data.records.length
+    ? data.records
+        .map(
+          (record) => `<tr>
+            <td><span class="earring-code">${escapeHtml(record.id)}</span></td>
+            <td><span class="herd-value-badge sum">${formatNumber(record.animais || 0)}</span></td>
+            <td>${escapeHtml(formatAnimalDateTime(record.embarque))}</td>
+            <td>${escapeHtml(record.destino || '--')}</td>
+            <td>${escapeHtml(record.motivo || '--')}</td>
+            <td>${escapeHtml(record.gta || '--')}</td>
+            <td>${escapeHtml(record.status || '--')}</td>
+          </tr>`,
+        )
+        .join('')
+    : '<tr><td colspan="7" class="loading-cell">Nenhuma saida registrada no Arroba Plus.</td></tr>';
+}
+
+function renderEarringsError(view, message) {
+  const targets = {
+    animals: [earringsStatus, earringsRows, 6],
+    deaths: [earringsDeathsStatus, earringsDeathsRows, 6],
+    entries: [earringsEntriesStatus, earringsEntriesRows, 7],
+    exits: [earringsExitsStatus, earringsExitsRows, 7],
+  };
+  const [status, rows, columns] = targets[view];
+  status.textContent = 'Dados indisponiveis';
+  rows.innerHTML = `<tr><td colspan="${columns}" class="loading-cell">${escapeHtml(message)}</td></tr>`;
+  if (view === 'animals') updateEarringsPagination(1, 1);
+}
+
+function updateEarringsPagination(page, totalPages) {
+  earringsPage.textContent = `Pagina ${page} de ${totalPages}`;
+  earringsPrevious.disabled = page <= 1;
+  earringsNext.disabled = page >= totalPages;
+}
+
+function changeEarringsPage(direction) {
+  earringsCurrentPage = Math.max(1, earringsCurrentPage + direction);
+  loadEarringsData('animals');
+}
+
+async function syncEarringsData() {
+  const secret = window.prompt('Senha de atualizacao do Arroba Plus:');
+  if (!secret) return;
+
+  earringsSyncButton.disabled = true;
+  earringsSyncButton.textContent = 'Atualizando...';
+  earringsStatus.textContent = 'Coletando dados do Arroba Plus...';
+
+  try {
+    const response = await fetch('/api/arrobaplus/update', {
+      method: 'POST',
+      headers: { 'x-refresh-secret': secret },
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || `Erro ${response.status}`);
+    earringsCurrentPage = 1;
+    loadedEarringsViews.clear();
+    const activeView = document.querySelector('[data-earrings-view].active')?.dataset.earringsView || 'animals';
+    await loadEarringsData(activeView);
+  } catch (error) {
+    earringsStatus.textContent = error.message;
+  } finally {
+    earringsSyncButton.disabled = false;
+    earringsSyncButton.textContent = 'Atualizar Arroba Plus';
+  }
+}
+
+function readEarringsAccessSecret() {
+  return sessionStorage.getItem(earringsAccessStorageKey) || '';
+}
+
+function requestEarringsAccess() {
+  const existingSecret = readEarringsAccessSecret();
+  if (existingSecret) return true;
+  const secret = window.prompt('Senha de acesso do Arroba Plus:');
+  if (!secret) return false;
+  sessionStorage.setItem(earringsAccessStorageKey, secret);
+  return true;
+}
+
+function formatAnimalSex(value) {
+  if (value === 'M') return 'Macho';
+  if (value === 'F') return 'Femea';
+  return value || '--';
+}
+
+function formatAnimalWeight(value) {
+  return Number.isFinite(value) ? `${formatNumber(value)} kg` : '--';
+}
+
+function formatAnimalDate(value) {
+  if (!value) return '--';
+  const date = parseDate(value);
+  return date ? date.toLocaleDateString('pt-BR') : value;
+}
+
+function formatAnimalDateTime(value) {
+  if (!value) return '--';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+}
+
+function formatEntryReason(value) {
+  const normalized = String(value || '').toLowerCase();
+  if (normalized === 'nascimento') return 'Nascimento';
+  if (normalized === 'carga') return 'Carga';
+  return value || '--';
 }
 
 async function loadHerdData() {
@@ -1271,6 +1575,10 @@ function activateSection(sectionId) {
   document
     .querySelectorAll('.section-panel')
     .forEach((section) => section.classList.toggle('active', section.id === sectionId));
+
+  if (sectionId === 'earringsSection' && requestEarringsAccess()) {
+    loadEarringsData();
+  }
 
   if (sectionId === 'ndviSection' && ndviMap) {
     setTimeout(() => ndviMap.invalidateSize(), 80);

@@ -1,0 +1,7 @@
+node_modules/
+.venv*/
+arrobaplus-coletas/
+.env
+.env.*
+!.env.example
+.vercel/

@@ -6,7 +6,11 @@
   "engines": {
     "node": "22.x"
   },
+  "scripts": {
+    "test": "node --test"
+  },
   "dependencies": {
+    "@vercel/blob": "^2.3.0",
     "@google/earthengine": "*"
   }
 }

@@ -28,6 +28,7 @@
         <button class="section-button active" type="button" data-section="irrigationSection">Irriga&ccedil;&atilde;o</button>
         <button class="section-button" type="button" data-section="cattleSection">Gado</button>
         <button class="section-button" type="button" data-section="herdSection">Rebanho</button>
+        <button class="section-button" type="button" data-section="earringsSection" data-full-only>Brinco</button>
         <button class="section-button" type="button" data-section="ndviSection" data-full-only>NDVI</button>
       </nav>
 
@@ -208,6 +209,53 @@
               </tbody>
             </table>
           </div>
+        </section>
+      </section>
+
+      <section id="earringsSection" class="section-panel" data-full-only>
+        <nav class="tabs" aria-label="Abas de brincos">
+          <button class="tab-button active" type="button" data-tab="earringsGeneralPanel" data-earrings-view="animals">Gado Geral</button>
+          <button class="tab-button" type="button" data-tab="earringsDeathsPanel" data-earrings-view="deaths">Mortes</button>
+          <button class="tab-button" type="button" data-tab="earringsEntriesPanel" data-earrings-view="entries">Entradas</button>
+          <button class="tab-button" type="button" data-tab="earringsExitsPanel" data-earrings-view="exits">Sa&iacute;das</button>
+        </nav>
+
+        <section id="earringsGeneralPanel" class="table-panel tab-panel active">
+          <div class="table-header earrings-title-row">
+            <div><h2>Gado Geral</h2><span id="earringsStatus">Aguardando dados</span></div>
+            <button id="earringsSyncButton" class="refresh-button" type="button">Atualizar Arroba Plus</button>
+          </div>
+          <div class="earrings-summary" aria-label="Resumo do gado">
+            <div class="earrings-metric"><span>Cabe&ccedil;as</span><strong id="earringsTotal">--</strong></div>
+            <div class="earrings-metric"><span>Machos</span><strong id="earringsMale">--</strong></div>
+            <div class="earrings-metric"><span>F&ecirc;meas</span><strong id="earringsFemale">--</strong></div>
+            <div class="earrings-metric"><span>Peso m&eacute;dio</span><strong id="earringsAverageWeight">--</strong></div>
+          </div>
+          <div id="earringsAgeGroups" class="earrings-age-groups" aria-label="Cabe&ccedil;as por faixa et&aacute;ria"></div>
+          <form id="earringsFilters" class="earrings-controls">
+            <label class="earrings-search">Buscar brinco<input id="earringsSearch" type="search" autocomplete="off" placeholder="SISBOV ou ID" /></label>
+            <label>Sexo<select id="earringsSex"><option value="">Todos</option><option value="M">Machos</option><option value="F">F&ecirc;meas</option></select></label>
+            <label>Peso m&iacute;nimo<input id="earringsMinWeight" type="number" min="0" step="1" inputmode="numeric" /></label>
+            <label>Peso m&aacute;ximo<input id="earringsMaxWeight" type="number" min="0" step="1" inputmode="numeric" /></label>
+            <button class="refresh-button" type="submit">Filtrar</button>
+          </form>
+          <div class="table-wrap"><table class="earrings-table"><thead><tr><th>Brinco / SISBOV</th><th>Sexo</th><th>Peso atual</th><th>Peso inicial</th><th>Idade</th><th>&Uacute;ltima pesagem</th></tr></thead><tbody id="earringsRows"><tr><td colspan="6" class="loading-cell">Carregando...</td></tr></tbody></table></div>
+          <div class="earrings-pagination"><button id="earringsPrevious" class="tab-button" type="button" disabled>Anterior</button><span id="earringsPage">P&aacute;gina 1 de 1</span><button id="earringsNext" class="tab-button" type="button" disabled>Pr&oacute;xima</button></div>
+        </section>
+
+        <section id="earringsDeathsPanel" class="table-panel tab-panel">
+          <div class="table-header"><h2>Mortes</h2><span id="earringsDeathsStatus">Aguardando dados</span></div>
+          <div class="table-wrap"><table class="earrings-table"><thead><tr><th>Brinco / SISBOV</th><th>Sexo</th><th>Data</th><th>Causa</th><th>Idade</th><th>Peso</th></tr></thead><tbody id="earringsDeathsRows"><tr><td colspan="6" class="loading-cell">Carregando...</td></tr></tbody></table></div>
+        </section>
+
+        <section id="earringsEntriesPanel" class="table-panel tab-panel">
+          <div class="table-header"><h2>Entradas</h2><span id="earringsEntriesStatus">Aguardando dados</span></div>
+          <div class="table-wrap"><table class="earrings-table"><thead><tr><th>ID</th><th>Motivo</th><th>Animais</th><th>In&iacute;cio</th><th>Chegada</th><th>Ra&ccedil;a</th><th>GTA</th></tr></thead><tbody id="earringsEntriesRows"><tr><td colspan="7" class="loading-cell">Carregando...</td></tr></tbody></table></div>
+        </section>
+
+        <section id="earringsExitsPanel" class="table-panel tab-panel">
+          <div class="table-header"><h2>Sa&iacute;das</h2><span id="earringsExitsStatus">Aguardando dados</span></div>
+          <div class="table-wrap"><table class="earrings-table"><thead><tr><th>ID</th><th>Animais</th><th>Embarque</th><th>Destino</th><th>Motivo</th><th>GTA</th><th>Status</th></tr></thead><tbody id="earringsExitsRows"><tr><td colspan="7" class="loading-cell">Carregando...</td></tr></tbody></table></div>
         </section>
       </section>
 

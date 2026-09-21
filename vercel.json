@@ -3,6 +3,10 @@
     {
       "path": "/api/ndvi/update",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/arrobaplus/update",
+      "schedule": "30 9 * * *"
     }
   ]
 }
